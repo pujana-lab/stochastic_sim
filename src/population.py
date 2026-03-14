@@ -6,6 +6,12 @@ class Population:
         """
         self.groups = groups
         self.individuals = []
-        for group, count in groups.items():
-            self.individuals.extend([group] * count)
+        self.fitness = {}
+        for group, info in groups.items():
+            n = info['n'] if isinstance(info, dict) else info
+            self.individuals.extend([group] * n)
+            if isinstance(info, dict) and 'fitness' in info:
+                self.fitness[group] = info['fitness']
+            else: 
+                self.fitness[group] = 1.0  # Fitness por defecto
         self.n = len(self.individuals)
