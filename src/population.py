@@ -42,3 +42,22 @@ class Population:
         """
         lowest_fitness_group = min(self.fitness, key=self.fitness.get)
         return lowest_fitness_group
+
+    def evolve_deterministic(self):
+        """ Simula una evolución determinista de la población.
+        El grupo con mayor aptitud gana un individuo y el grupo con menor aptitud pierde un individuo.
+        """
+        greatest_fitness_group = self.get_greatest_fitness_group()
+        lowest_fitness_group = self.get_lowest_fitness_group()
+
+        # Aumentar un individuo al grupo con mayor aptitud
+        self.individuals.append(greatest_fitness_group)
+        self.fitness[greatest_fitness_group] += 1
+
+        # Eliminar un individuo del grupo con menor aptitud
+        if lowest_fitness_group in self.individuals:
+            self.individuals.remove(lowest_fitness_group)
+            self.fitness[lowest_fitness_group] -= 1
+
+        # Actualizar el tamaño total de la población
+        self.n = len(self.individuals)
