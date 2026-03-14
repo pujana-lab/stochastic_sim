@@ -50,5 +50,18 @@ class Population:
             self.groups[group].n -= 1
             self.n -= 1
 
+    def mutate(self, victim_group, new_group_name, new_fitness):
+        """ Realiza una mutación eliminando un individuo del grupo víctima y agregando uno al nuevo grupo.
+        Args:
+            victim_group (str): Nombre del grupo del que se eliminará el individuo.
+            new_group_name (str): Nombre del nuevo grupo al que se agregará el individuo.
+            new_fitness (float): Aptitud del nuevo grupo.
+        """
+        self.remove_individual(victim_group)
+        if new_group_name not in self.groups:
+            self.groups[new_group_name] = SubPopulation(name=new_group_name, n=0, fitness=new_fitness)
+            self.fitness[new_group_name] = new_fitness
+        self.append_individual(new_group_name)
+
     def __len__(self):
         return len(self.individuals)

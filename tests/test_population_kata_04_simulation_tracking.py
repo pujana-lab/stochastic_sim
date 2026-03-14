@@ -23,7 +23,7 @@ class TestPopulationSimulationTracking:
 
         sim = Simulator(population=pop)
         assert len(sim.tracking) == 0
-        assert isinstance(sim.evol, EvolutionEngineDeterministic)
+        assert isinstance(sim.evol_engine, EvolutionEngineDeterministic)
 
     def test_population_simulation_tracking_after_evolution(self):
         """Test: seguimiento de la simulación después de la evolución."""
@@ -80,8 +80,8 @@ class TestPopulationSimulationTracking:
         sim.run()
 
         summary = sim.get_tracking_summary_df()
-        assert summary.shape == (2, 3)
-        assert summary.columns.tolist() == ['time', 'group1', 'group2']
+        assert summary.shape == (2, 4)
+        assert summary.columns.tolist() == ['time', 'group1', 'group2', 'events']
         assert summary.loc[0, 'group1'] == 11
         assert summary.loc[0, 'group2'] == 9
         assert summary.loc[1, 'group1'] == 12

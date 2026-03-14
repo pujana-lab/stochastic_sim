@@ -1,0 +1,24 @@
+# Evolución Bernoulli con mutación Bernoulli
+populations:
+  dominant:
+    n: 60
+    fitness: 2.0
+  weak:
+    n: 40
+    fitness: 1.0
+
+steps: 200
+
+engine:
+  type: bernoulli
+  seed: 42
+
+mutation:
+  type: bernoulli
+  p: 0.1
+  seed: 7
+  victim_group: weak
+  new_group_name: mutated
+  new_fitness: 25.0
+
+output: results_bernoulli_mutation.xlsx

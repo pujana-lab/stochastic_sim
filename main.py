@@ -14,6 +14,9 @@ import yaml
 
 from src.evolution_engine_bernoulli import EvolutionEngineBernoulli
 from src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from src.mutation_engine_bernoulli import MutationEngineBernoulli
+from src.mutation_engine_deterministic import MutationEngineDeterministic
+from src.mutation_engine_disabled import MutationEngineDisabled
 from src.population import Population, SubPopulation
 from src.simulator import Simulator
 
@@ -90,6 +93,67 @@ def build_engine(engine_config: dict):
         raise ValueError(f"Tipo de motor desconocido: '{engine_type}'. Usa 'deterministic' o 'bernoulli'.")
 
 
+def build_mutation(mutation_config: dict | None):
+    """Construye el motor de mutación según la configuración.
+
+    Args:
+        mutation_config: Dict con 'type' (deterministic|bernoulli), 'victim_group',
+                         'new_group_name', 'new_fitness' y parámetros específicos
+                         del tipo. Si es None, no se aplica mutación.
+
+    Returns:
+        MutationEngineInterface | MutationEngineDisabled: Motor de mutación.
+
+    Raises:
+        ValueError: Si faltan campos obligatorios o el tipo es desconocido.
+    """
+    if mutation_config is None:
+        return MutationEngineDisabled()
+
+    required = ["victim_group", "new_group_name", "new_fitness"]
+    missing = [f for f in required if f not in mutation_config]
+    if missing:
+        raise ValueError(f"Campos obligatorios ausentes en 'mutation': {missing}")
+
+    mutation_type = mutation_config.get("type", "deterministic").lower()
+    victim_group = mutation_config["victim_group"]
+    new_group_name = mutation_config["new_group_name"]
+    new_fitness = float(mutation_config["new_fitness"])
+
+    if mutation_type == "deterministic":
+        every_n_steps = mutation_config.get("every_n_steps")
+        if every_n_steps is None:
+            raise ValueError("'every_n_steps' es obligatorio para mutación determinista.")
+        logger.info(
+            f"Mutación determinista: cada {every_n_steps} pasos, "
+            f"{victim_group} -> {new_group_name} (fitness={new_fitness})"
+        )
+        return MutationEngineDeterministic(
+            every_n_steps=int(every_n_steps),
+            victim_group=victim_group,
+            new_group_name=new_group_name,
+            new_fitness=new_fitness,
+        )
+    elif mutation_type == "bernoulli":
+        p = mutation_config.get("p")
+        if p is None:
+            raise ValueError("'p' es obligatorio para mutación Bernoulli.")
+        seed = mutation_config.get("seed", None)
+        logger.info(
+            f"Mutación Bernoulli: p={p}, seed={seed}, "
+            f"{victim_group} -> {new_group_name} (fitness={new_fitness})"
+        )
+        return MutationEngineBernoulli(
+            p=float(p),
+            victim_group=victim_group,
+            new_group_name=new_group_name,
+            new_fitness=new_fitness,
+            seed=seed,
+        )
+    else:
+        raise ValueError(f"Tipo de mutación desconocido: '{mutation_type}'. Usa 'deterministic' o 'bernoulli'.")
+
+
 def run_simulation(config: dict) -> None:
     """Ejecuta la simulación y guarda el resultado en un fichero XLSX.
 
@@ -98,13 +162,18 @@ def run_simulation(config: dict) -> None:
     """
     population = build_population(config["populations"])
     engine = build_engine(config["engine"])
+    mutation = build_mutation(config.get("mutation", None))
     steps = int(config["steps"])
     output_path = config["output"]
 
     logger.info(f"Población inicial: { {k: v.n for k, v in population.groups.items()} }")
     logger.info(f"Pasos: {steps}")
 
-    simulator = Simulator(population=population, evol=engine)
+    simulator = Simulator(
+        population=population,
+        evol_engine=engine,
+        mutation_engine=mutation,
+    )
 
     for step in range(steps):
         simulator.run()
