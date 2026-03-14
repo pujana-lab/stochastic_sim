@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 @dataclass
 class SubPopulation:
     def __init__(self, name, n, fitness=1.0):
@@ -21,13 +22,14 @@ class Population:
         self.groups = groups
         self.individuals = []
         self.fitness = {}
+        n_total = 0
         for group, info in groups.items():
             n = info.n
+            n_total += n
             self.individuals.extend([group] * n)
             self.fitness[group] = info.fitness
-        self.n = len(self.individuals)
-
-
+        self.n_init = n_total
+        self.n = self.__len__()
 
     def append_individual(self, group):
         """ Agrega un individuo a un grupo específico.
@@ -35,7 +37,7 @@ class Population:
             group (str): Nombre del grupo al que se agregará el individuo.
         """
         self.individuals.append(group)
-        self.fitness[group] += 1
+        self.groups[group].n += 1
         self.n += 1
 
     def remove_individual(self, group):
@@ -45,5 +47,8 @@ class Population:
         """
         if group in self.individuals:
             self.individuals.remove(group)
-            self.fitness[group] -= 1
+            self.groups[group].n -= 1
             self.n -= 1
+
+    def __len__(self):
+        return len(self.individuals)

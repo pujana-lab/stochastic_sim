@@ -6,170 +6,172 @@ applyTo: '**'
 
 ## 1. Rol y Responsabilidades
 
-Eres un **desarrollador competente** con expertise en análisis espacial y estadística. Tu objetivo es:
+Eres un **desarrollador competente** con expertise en modelado de poblaciones y probabilidad. Tu objetivo es:
 
 - Escribir código de **alta calidad**, limpio y mantenible
-- Crear código **testeable** con pruebas unitarias exhaustivas
-- Documentar claramente para que matemáticos y estadísticos lo entiendan
+- Crear código **testeable** con pruebas unitarias exhaustivas siguiendo TDD
+- Documentar claramente para que matemáticos y biólogos lo entiendan
 - Mantener una estructura de código **modular y escalable**
 
-## 2. Principios de Desarrollo
+## 2. Contexto del Proyecto
 
-### 2.1 Legibilidad y Claridad
+Este proyecto implementa el **Proceso de Moran**, un modelo estocástico de evolución de poblaciones finitas.
 
-- Usa nombres de variables descriptivos en inglés: `spatial_weights`, `moran_index`, no `sw`, `mi`
+En cada paso del proceso:
+1. Un individuo es seleccionado para **reproducirse** (proporcional al fitness)
+2. Un individuo es seleccionado para **morir** (reemplazado por la copia del reproductor)
+3. El tamaño total de la población se mantiene constante
+
+Referencias:
+- https://en.wikipedia.org/wiki/Moran_process
+
+## 3. Principios de Desarrollo
+
+### 3.1 Legibilidad y Claridad
+
+- Usa nombres de variables descriptivos en inglés: `reproductor_group`, `victim_group`, no `rep`, `v`
 - Escribe docstrings en formato Google para todas las funciones y clases
-- Incluye ecuaciones matemáticas en docstrings usando LaTeX cuando sea relevante
 - Máximo 120 caracteres por línea
 - Agrupa imports: stdlib → third-party → local
 
-### 2.2 Type Hints y Documentación
+### 3.2 Type Hints y Documentación
 
-python
+```python
 # ✅ CORRECTO
-from typing import Union
-import numpy as np
+from src.population import Population
 
-def calculate_moran_index(
-    values: np.ndarray,
-    weights: np.ndarray,
-    standardize: bool = True
-) -> float:
+def get_reproductor_group(self, population: Population) -> str:
     """
-    Calcula el índice I de Moran para autocorrelación espacial.
-    
-    El índice I de Moran mide la correlación espacial:
-    
-    $$I = \\frac{n}{S_0} \\frac{\\sum_i \\sum_j w_{ij}(z_i)(z_j)}{\\sum_i z_i^2}$$
-    
-    Donde:
-    - n: número de observaciones
-    - w_ij: pesos espaciales
-    - z_i: variable estandarizada
-    - S_0: suma de todos los pesos
-    
+    Selecciona el grupo que se reproduce en este paso.
+
     Args:
-        values: Array de valores (n,)
-        weights: Matriz de pesos espaciales (n, n)
-        standardize: Si True, estandariza los valores
-        
+        population: Estado actual de la población.
+
     Returns:
-        float: Valor del índice I de Moran en rango [-1, 1]
-        
-    Raises:
-        ValueError: Si shapes no coinciden o matriz no es simétrica
-        
-    Examples:
-        >>> values = np.array([1.0, 2.0, 3.0, 4.0])
-        >>> weights = np.array([[0, 1, 0, 0],
-        ...                     [1, 0, 1, 0],
-        ...                     [0, 1, 0, 1],
-        ...                     [0, 0, 1, 0]])
-        >>> moran_i = calculate_moran_index(values, weights)
+        str: Nombre del grupo reproductor.
+
+    Example:
+        >>> engine = EvolutionEngineDeterministic()
+        >>> engine.get_reproductor_group(population)
+        'dominant'
     """
-    # Implementation here
-    pass
+    return max(
+        population.groups.values(),
+        key=lambda g: g.fitness * g.n
+    ).name
 ```
 
-### 2.3 Estructura de Proyecto
+### 3.3 Estructura de Proyecto
 
-
+```
 moran/
 ├── src/
 │   ├── __init__.py
-│   ├── moran.py          # Cálculo del índice I
-│   ├── weights.py        # Construcción de matrices de pesos
-│   ├── statistics.py     # Estadísticas y p-values
-│   └── visualization.py  # Gráficos
+│   ├── population.py                          # SubPopulation + Population
+│   ├── evolution_engine_interface.py          # Interfaz abstracta EvolutionEngineInterface
+│   ├── evolution_engine_deterministic.py      # Motor determinista (selección por fitness × n)
+│   ├── evolution_engine_bernoulli.py          # Motor probabilístico (selección proporcional al fitness)
+│   └── simulator.py                           # Simulator: orquesta pasos y guarda tracking
 ├── tests/
 │   ├── __init__.py
-│   ├── test_moran.py
-│   ├── test_weights.py
-│   ├── test_statistics.py
-│   └── conftest.py       # Fixtures compartidas
-├── data/
-│   └── examples/         # Datos de ejemplo
-├── results/
-│   └── .gitkeep
-├── main.py              # Punto de entrada
-└── requirements.txt
+│   ├── test_population_kata_01_minimal_builder.py          # Kata 1: construcción básica de Population
+│   ├── test_population_kata_02_basic_fitness.py            # Kata 2: fitness en SubPopulation
+│   ├── test_population_kata_03_deterministic_evolution.py  # Kata 3: motor determinista
+│   ├── test_population_kata_04_simulation_tracking.py      # Kata 4: tracking con Simulator
+│   ├── test_population_kata_05_refactor_determinic_evolution.py  # Kata 5: refactor "tell, don't ask"
+│   └── test_population_kata_06_bernoulli_evolution_engine.py     # Kata 6: motor Bernoulli
+├── main.py              # Punto de entrada (pendiente de implementar)
+├── makefile
+├── requirements
+└── README.md
 ```
 
-## 3. Testing - Requisito Obligatorio
+#### Responsabilidades por módulo
 
-### 3.1 Estándares de Testing
+| Módulo | Clase | Responsabilidad |
+|--------|-------|-----------------|
+| `population.py` | `SubPopulation` | Dataclass que almacena `name`, `n` (tamaño) y `fitness` de un subgrupo. |
+| `population.py` | `Population` | Contiene un dict de `SubPopulation`. Expone `individuals`, `fitness`, `n`. Métodos: `append_individual`, `remove_individual`. |
+| `evolution_engine_interface.py` | `EvolutionEngineInterface` | Contrato abstracto con `get_reproductor_group(population)` y `get_victim_group(population)`. |
+| `evolution_engine_deterministic.py` | `EvolutionEngineDeterministic` | Selecciona reproductor (max `fitness × n`) y víctima (min `fitness × n`) de forma determinista. |
+| `evolution_engine_bernoulli.py` | `EvolutionEngineBernoulli` | Selecciona reproductor y víctima de forma probabilística proporcional al fitness. |
+| `simulator.py` | `Simulator` | Orquesta pasos con `run()`. Guarda histórico en `tracking`. Expone `get_tracking_dataframe()` y `get_tracking_summary_df()`. |
+
+## 4. Modelos de Datos
+
+### SubPopulation
+
+```python
+@dataclass
+class SubPopulation:
+    name: str       # Identificador del subgrupo
+    n: int          # Número de individuos
+    fitness: float  # Aptitud (por defecto 1.0)
+```
+
+### Population
+
+```python
+# Construcción esperada
+groups = {
+    'dominant': SubPopulation('dominant', n=60, fitness=2.0),
+    'weak':     SubPopulation('weak',     n=40, fitness=1.0),
+}
+population = Population(groups)
+```
+
+### Simulator
+
+```python
+simulator = Simulator(population, evol=EvolutionEngineDeterministic())
+simulator.run()                          # Ejecuta un paso
+simulator.get_tracking_summary_df()     # DataFrame con evolución temporal
+```
+
+## 5. Testing - Requisito Obligatorio
+
+### 5.1 Estándares de Testing
 
 Toda función debe tener pruebas que cubran:
 
 - **Caso base**: Comportamiento normal esperado
-- **Casos límite**: Arrays vacíos, valores cero, matrices singulares
-- **Casos de error**: Inputs inválidos, shapes incompatibles
-- **Propiedades matemáticas**: Rango de resultados, simetría, etc.
+- **Casos límite**: Población de un solo grupo, n=1, fitness=0
+- **Casos de error**: Inputs inválidos
 
-### 3.2 Estructura de Tests
+### 5.2 Estructura de Tests
+
+Los tests siguen una nomenclatura de **kata incremental**:
+`test_population_kata_NN_descripcion.py`, donde `NN` indica la fase.
 
 ```python
-# ✅ CORRECTO: test_moran.py
+# ✅ CORRECTO
 import pytest
-import numpy as np
-from src.moran import calculate_moran_index
+from src.population import Population, SubPopulation
+from src.evolution_engine_deterministic import EvolutionEngineDeterministic
 
-class TestMoranIndex:
-    """Suite de pruebas para el índice I de Moran."""
-    
+class TestDeterministicEvolution:
+    """Suite de pruebas para el motor de evolución determinista."""
+
     @pytest.fixture
-    def sample_data(self):
-        """Fixture: datos espaciales simples."""
-        values = np.array([1.0, 2.0, 3.0, 4.0])
-        weights = np.array([
-            [0, 1, 0, 0],
-            [1, 0, 1, 0],
-            [0, 1, 0, 1],
-            [0, 0, 1, 0]
-        ], dtype=float)
-        return values, weights
-    
-    def test_moran_index_basic(self, sample_data):
-        """Prueba: cálculo básico del índice."""
-        values, weights = sample_data
-        result = calculate_moran_index(values, weights)
-        
-        assert isinstance(result, float)
-        assert -1 <= result <= 1, "Moran I debe estar en [-1, 1]"
-    
-    def test_moran_index_empty_array(self):
-        """Prueba: comportamiento con array vacío."""
-        with pytest.raises(ValueError, match="Array vacío"):
-            calculate_moran_index(np.array([]), np.zeros((0, 0)))
-    
-    def test_moran_index_shape_mismatch(self):
-        """Prueba: error cuando shapes no coinciden."""
-        values = np.array([1.0, 2.0, 3.0])
-        weights = np.zeros((4, 4))
-        
-        with pytest.raises(ValueError, match="Shape incompatible"):
-            calculate_moran_index(values, weights)
-    
-    def test_moran_index_symmetric_weights(self, sample_data):
-        """Prueba: validación que matriz sea simétrica."""
-        values, weights = sample_data
-        asymmetric_weights = weights.copy()
-        asymmetric_weights[0, 1] = 5  # Romper simetría
-        
-        with pytest.raises(ValueError, match="simétrica"):
-            calculate_moran_index(values, asymmetric_weights)
-    
-    def test_moran_index_standardization(self, sample_data):
-        """Prueba: efecto de estandarización."""
-        values, weights = sample_data
-        
-        result_std = calculate_moran_index(values, weights, standardize=True)
-        result_no_std = calculate_moran_index(values, weights, standardize=False)
-        
-        assert result_std != result_no_std
+    def population(self):
+        """Fixture: población con dos grupos y fitness distinto."""
+        return Population({
+            'dominant': SubPopulation('dominant', n=40, fitness=2.0),
+            'weak':     SubPopulation('weak',     n=60, fitness=1.0),
+        })
 
+    def test_reproductor_is_highest_fitness_group(self, population):
+        """Prueba: el grupo con mayor fitness × n se reproduce."""
+        engine = EvolutionEngineDeterministic()
+        assert engine.get_reproductor_group(population) == 'dominant'
 
-### 3.3 Comandos de Testing
+    def test_victim_is_lowest_fitness_group(self, population):
+        """Prueba: el grupo con menor fitness × n pierde un individuo."""
+        engine = EvolutionEngineDeterministic()
+        assert engine.get_victim_group(population) == 'weak'
+```
+
+### 5.3 Comandos de Testing
 
 ```bash
 # Ejecutar todas las pruebas
@@ -179,114 +181,57 @@ pytest
 pytest --cov=src --cov-report=html
 
 # Tests específicos
-pytest tests/test_moran.py::TestMoranIndex::test_moran_index_basic -v
+pytest tests/test_population_kata_03_deterministic_evolution.py -v
 
 # Con output detallado
 pytest -v --tb=short
+```
 
+## 6. Estándares de Código Python
 
-## 4. Estándares de Código Python
-
-### 4.1 Imports y Organización
+### 6.1 Imports y Organización
 
 ```python
 # ✅ CORRECTO
 import logging
-from pathlib import Path
-from typing import Optional, Tuple
+from abc import ABC, abstractmethod
 
-import numpy as np
 import pandas as pd
 
-from src.weights import create_weight_matrix
-from src.statistics import calculate_pvalue
+from src.population import Population, SubPopulation
+from src.evolution_engine_interface import EvolutionEngineInterface
 
 # ❌ INCORRECTO
-from src.weights import *
-import numpy, scipy, sklearn  # En una línea
-import src.weights
+from src.population import *
 ```
 
-### 4.2 Funciones y Clases
-
-python
-# ✅ CORRECTO
-def normalize_weights(
-    weights: np.ndarray,
-    method: str = "row"
-) -> np.ndarray:
-    """
-    Normaliza matriz de pesos espaciales.
-    
-    Args:
-        weights: Matriz de pesos (n, n)
-        method: "row" o "global"
-        
-    Returns:
-        Matriz normalizada
-    """
-    if method not in ["row", "global"]:
-        raise ValueError(f"method debe ser 'row' o 'global', no '{method}'")
-    
-    # Implementation
-    return normalized_weights
-
-
-# ❌ INCORRECTO
-def norm_w(w, m="r"):  # Abreviado
-    return w / w.sum()  # Sin validación
-
-
-### 4.3 Manejo de Errores
+### 6.2 Manejo de Errores
 
 ```python
 # ✅ CORRECTO
-def validate_weights_matrix(weights: np.ndarray) -> None:
-    """Valida propiedades de matriz de pesos."""
-    if not isinstance(weights, np.ndarray):
-        raise TypeError(f"Expected ndarray, got {type(weights)}")
-    
-    if weights.ndim != 2:
-        raise ValueError(f"Expected 2D array, got {weights.ndim}D")
-    
-    if weights.shape[0] != weights.shape[1]:
-        raise ValueError("Matriz debe ser cuadrada")
-    
-    if not np.allclose(weights, weights.T):
-        raise ValueError("Matriz debe ser simétrica")
+def remove_individual(self, group: str) -> None:
+    if group not in self.individuals:
+        raise ValueError(f"El grupo '{group}' no tiene individuos para eliminar.")
+    self.individuals.remove(group)
+    self.groups[group].n -= 1
+    self.n -= 1
+```
 
-
-# ❌ INCORRECTO
-def validate_weights_matrix(w):
-    if len(w) == 0:  # Incompleto
-        pass
-
-
-## 5. Convenciones Matemáticas
-
-- Variables escalares: `value`, `result`
-- Vectores (1D): `values`, `array`
-- Matrices (2D): `weights`, `matrix`
-- Resultados: siempre retornar objetos útiles, no None
-- Usar `np.allclose()` para comparaciones de floats
-
-## 6. Logging y Debugging
+## 7. Logging y Debugging
 
 ```python
 import logging
 
 logger = logging.getLogger(__name__)
 
-def calculate_moran_index(values, weights):
-    logger.debug(f"Input shapes: values={values.shape}, weights={weights.shape}")
-    
-    result = ...
-    
-    logger.info(f"Moran I calculado: {result:.4f}")
-    return result
+def run(self):
+    logger.debug(f"Estado antes del paso: {self.population.groups}")
+    reproductor = self.evol.get_reproductor_group(self.population)
+    victim = self.evol.get_victim_group(self.population)
+    logger.info(f"Paso: reproductor={reproductor}, víctima={victim}")
 ```
 
-## 7. Checklist Antes de Commitear
+## 8. Checklist Antes de Commitear
 
 - [ ] Código sigue PEP 8 y estándares del proyecto
 - [ ] Todas las funciones tienen docstrings completos
@@ -297,21 +242,11 @@ def calculate_moran_index(values, weights):
 - [ ] Nombres descriptivos (no abreviaturas)
 - [ ] Sin código comentado (borrar o explicar)
 - [ ] Logs apropiados con niveles correctos
-- [ ] Documentación actualizada
 
-## 8. Dependencias del Proyecto
+## 9. Dependencias del Proyecto
 
 ```
-numpy>=1.20.0
-scipy>=1.7.0
-pandas>=1.3.0
 pytest>=6.2.0
 pytest-cov>=2.12.0
+pandas>=1.3.0
 ```
-
-## 9. Recursos para Referencia
-
-- Ecuaciones espaciales: documentar en docstrings con LaTeX
-- Visualización: matplotlib para exploración, plotly para interactivos
-- Estructura: mantener separación clara entre lógica, tests y datos
-- Matemáticos/Estadísticos: priorizar claridad sobre optimización prematura

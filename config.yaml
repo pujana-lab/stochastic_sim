@@ -1,0 +1,20 @@
+populations:
+  dominant:
+    n: 60
+    fitness: 2.0
+  weak:
+    n: 40
+    fitness: 1.0
+  very_weak:
+    n: 40
+    fitness: 0.5
+
+
+
+steps: 200
+
+engine:
+  type: bernoulli   # deterministic | bernoulli
+  seed: 42
+
+output: results.xlsx

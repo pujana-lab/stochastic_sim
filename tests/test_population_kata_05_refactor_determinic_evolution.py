@@ -29,4 +29,20 @@ class TestEvolutionEngineDeterministic:
         assert victim_candidate == 'group2'
 
 
+    def skip_test_population_determ_when_min_group_is_zero(self):
+        """Test: evolución determinista cuando un grupo tiene 0 individuos."""
+        groups = {
+            'group1': SubPopulation(name='group1', n=0, fitness=2.0),
+            'group2': SubPopulation(name='group2', n=10, fitness=1.0)
+        }
+        pop = Population(groups=groups)
+        engine = EvolutionEngineDeterministic()
+
+        reproductor_candidate = engine.get_reproductor_group(population=pop)
+        victim_candidate = engine.get_victim_group(population=pop)
+
+        assert reproductor_candidate == 'group2'
+        assert victim_candidate == 'group2'
+
+
 

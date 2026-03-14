@@ -86,5 +86,41 @@ class TestPopulationSimulationTracking:
         assert summary.loc[0, 'group2'] == 9
         assert summary.loc[1, 'group1'] == 12
         assert summary.loc[1, 'group2'] == 8
+
+
+    def test_tracker_on_group_lowest_zero(self):
+        """Test: seguimiento cuando el grupo con menor fitness tiene 0 individuos."""
+        groups = {
+            'group1': SubPopulation(name='group1', n=10, fitness=2.0),
+            'group2': SubPopulation(name='group2', n=0, fitness=1.0)
+        }
+        pop = Population(groups=groups)
+
+        sim = Simulator(population=pop)
+        sim.run()
+
+        summary = sim.get_tracking_summary_df()
+
+        assert summary.loc[0, 'group1'] == 10
+
+        assert summary.loc[0, 'group2'] == 0
         
 
+    def test_tracker_on_group_lowest_zero_three_groups(self):
+        """Test: seguimiento cuando el grupo con menor fitness tiene 0 individuos."""
+        groups = {
+            'group1': SubPopulation(name='group1', n=10, fitness=2.0),
+            'group2': SubPopulation(name='group2', n=6, fitness=1.0),
+            'group3': SubPopulation(name='group3', n=0, fitness=1.0)
+        }
+        pop = Population(groups=groups)
+
+        sim = Simulator(population=pop)
+        sim.run()
+
+        summary = sim.get_tracking_summary_df()
+
+        assert summary.loc[0, 'group1'] == 11
+        assert summary.loc[0, 'group2'] == 5
+        assert summary.loc[0, 'group3'] == 0
+        
