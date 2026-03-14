@@ -39,28 +39,3 @@ class TestPopulationFitness:
         pop = Population(groups=groups)
         assert 'group1' in pop.fitness
         assert pop.fitness['group1'] == 3.0
-
-    def test_population_find_greatest_fitness(self):
-        """Test: encontrar el grupo con mayor fitness."""
-        groups = {
-            'group1': SubPopulation(name='group1', n=10, fitness=2.0),
-            'group2': SubPopulation(name='group2', n=10, fitness=3.0),
-            'group3': SubPopulation(name='group3', n=10, fitness=1.0)
-        }
-        pop = Population(groups=groups)
-
-        greatest_fitness_group = pop.get_greatest_fitness_group()
-        assert greatest_fitness_group == 'group2'
-        
-    def test_population_find_lowest_fitness(self):
-        """Test: encontrar el grupo con menor fitness."""
-        groups = {
-            'group1': SubPopulation(name='group1', n=10, fitness=2.0),
-            'group2': SubPopulation(name='group2', n=10, fitness=3.0),
-            'group3': SubPopulation(name='group3', n=10, fitness=1.0)
-        }
-        pop = Population(groups=groups)
-
-        lowest_fitness_group = pop.get_lowest_fitness_group()
-        assert lowest_fitness_group == 'group3'
-

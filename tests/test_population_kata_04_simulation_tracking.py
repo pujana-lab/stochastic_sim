@@ -8,6 +8,7 @@ Kata 04: Seguimiento de la simulación.
 from src.simulator import Simulator
 from src.population import Population
 from src.population import SubPopulation
+from src.evolution_engine_deterministic import EvolutionEngineDeterministic
 
 class TestPopulationSimulationTracking:
     """Tests para el seguimiento de la simulación de la población."""
@@ -22,6 +23,7 @@ class TestPopulationSimulationTracking:
 
         sim = Simulator(population=pop)
         assert len(sim.tracking) == 0
+        assert isinstance(sim.evol, EvolutionEngineDeterministic)
 
     def test_population_simulation_tracking_after_evolution(self):
         """Test: seguimiento de la simulación después de la evolución."""

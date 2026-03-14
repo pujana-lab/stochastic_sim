@@ -27,37 +27,23 @@ class Population:
             self.fitness[group] = info.fitness
         self.n = len(self.individuals)
 
-    def get_greatest_fitness_group(self):
-        """ Devuelve el grupo con la mayor aptitud.
-        Returns:
-            str: Nombre del grupo con la mayor aptitud.
+
+
+    def append_individual(self, group):
+        """ Agrega un individuo a un grupo específico.
+        Args:
+            group (str): Nombre del grupo al que se agregará el individuo.
         """
-        greatest_fitness_group = max(self.fitness, key=self.fitness.get)
-        return greatest_fitness_group
+        self.individuals.append(group)
+        self.fitness[group] += 1
+        self.n += 1
 
-    def get_lowest_fitness_group(self):
-        """ Devuelve el grupo con la menor aptitud.
-        Returns:
-            str: Nombre del grupo con la menor aptitud.
+    def remove_individual(self, group):
+        """ Elimina un individuo de un grupo específico.
+        Args:
+            group (str): Nombre del grupo del que se eliminará el individuo.
         """
-        lowest_fitness_group = min(self.fitness, key=self.fitness.get)
-        return lowest_fitness_group
-
-    def evolve_deterministic(self):
-        """ Simula una evolución determinista de la población.
-        El grupo con mayor aptitud gana un individuo y el grupo con menor aptitud pierde un individuo.
-        """
-        greatest_fitness_group = self.get_greatest_fitness_group()
-        lowest_fitness_group = self.get_lowest_fitness_group()
-
-        # Aumentar un individuo al grupo con mayor aptitud
-        self.individuals.append(greatest_fitness_group)
-        self.fitness[greatest_fitness_group] += 1
-
-        # Eliminar un individuo del grupo con menor aptitud
-        if lowest_fitness_group in self.individuals:
-            self.individuals.remove(lowest_fitness_group)
-            self.fitness[lowest_fitness_group] -= 1
-
-        # Actualizar el tamaño total de la población
-        self.n = len(self.individuals)
+        if group in self.individuals:
+            self.individuals.remove(group)
+            self.fitness[group] -= 1
+            self.n -= 1
