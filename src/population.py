@@ -1,3 +1,17 @@
+from dataclasses import dataclass
+@dataclass
+class SubPopulation:
+    def __init__(self, name, n, fitness=1.0):
+        """ Inicializa un subgrupo de la población.
+        Args:
+            name (str): Nombre del subgrupo.
+            n (int): Número de individuos en el subgrupo.
+            fitness (float): Aptitud del subgrupo (por defecto 1.0).
+        """
+        self.name = name
+        self.n = n
+        self.fitness = fitness
+
 class Population:
     def __init__(self, groups):
         """ Inicializa la población con los grupos y sus tamaños.
@@ -8,10 +22,23 @@ class Population:
         self.individuals = []
         self.fitness = {}
         for group, info in groups.items():
-            n = info['n'] if isinstance(info, dict) else info
+            n = info.n
             self.individuals.extend([group] * n)
-            if isinstance(info, dict) and 'fitness' in info:
-                self.fitness[group] = info['fitness']
-            else: 
-                self.fitness[group] = 1.0  # Fitness por defecto
+            self.fitness[group] = info.fitness
         self.n = len(self.individuals)
+
+    def get_greatest_fitness_group(self):
+        """ Devuelve el grupo con la mayor aptitud.
+        Returns:
+            str: Nombre del grupo con la mayor aptitud.
+        """
+        greatest_fitness_group = max(self.fitness, key=self.fitness.get)
+        return greatest_fitness_group
+
+    def get_lowest_fitness_group(self):
+        """ Devuelve el grupo con la menor aptitud.
+        Returns:
+            str: Nombre del grupo con la menor aptitud.
+        """
+        lowest_fitness_group = min(self.fitness, key=self.fitness.get)
+        return lowest_fitness_group
