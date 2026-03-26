@@ -20,3 +20,7 @@ run-all:
 
 activate_venv:
 	source venv/bin/activate
+
+
+install-notebook:
+	pip install -e .
