@@ -18,6 +18,9 @@ run-all:
 	$(MAKE) run-deterministic-mutation
 	$(MAKE) run-bernoulli-mutation
 
+create_venv:
+	python -m venv venv
+
 activate_venv:
 	source venv/bin/activate
 
