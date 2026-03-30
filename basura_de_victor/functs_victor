@@ -1,0 +1,188 @@
+import numpy as np
+def carrying_capacity(t, K0=100_000_000, decline=0.0, Kmin=1.0):
+    return max(Kmin, K0 - decline * t)
+
+
+def divide(clones, cid):
+    clone=clones[cid]
+    clone["N"]+= 1
+    return
+def kill(clones,cid):
+    clone=clones[cid]
+    clone["N"]-=1
+def mutate(clones,cid):
+    clone=clones[cid]
+    if clone["N"] <= 0:
+        return
+
+    # One cell leaves parent clone
+    clone["N"] -= 1
+
+    # Create new child clone
+    clone["children_count"] += 1
+    child_number = clone["children_count"]
+    child_id = make_child_id(cid, child_number)
+
+    params = mutated_parameters(clone)
+
+    clones[child_id] = {
+        "N": 1,
+        "lambda": params["lambda"],
+        "mu": params["mu"],
+        "nu": params["nu"],
+        "d1": params["d1"],
+        "d2": params["d2"],
+        "parent": cid,
+        "children_count": 0,
+    }
+def mutated_parameters(parent_clone, fitness_gain=0.05):
+    """
+    Minimal advantageous mutation rule.
+    You can replace this by any mutation kernel you want.
+    """
+    return {
+        "lambda": parent_clone["lambda"] * (1.0 + fitness_gain),
+        "mu": parent_clone["mu"],
+        "d1": parent_clone["d1"],
+        "d2": parent_clone["d2"],
+        "nu": parent_clone["nu"] + 0.02,
+
+    }
+def crowding_factor(clones, t, use_logistic=False, K0=100_000_000, decline=0.0, Kmin=1.0):
+    if not use_logistic:
+        return 1.0
+    Ntot = sum(info["N"] for info in clones.values())
+    Kt = carrying_capacity(t, K0=K0, decline=decline, Kmin=Kmin)
+    return max(0.0, 1.0 - Ntot / Kt)
+
+
+def make_child_id(parent_id, child_number):
+    return parent_id + (child_number,)
+
+def waiting_time(rates,R,rng):
+    
+    u1 = rng.random()
+    tau = -np.log(u1) / R
+    
+    return tau
+
+
+def get_rates(clones,t,g=1):
+    events=[]
+    rates=[]
+    for cid, info in clones.items():
+
+        N = info["N"]
+        if N <= 0:
+            continue
+
+        rb = info["lambda"] * N * g
+        rd = info["mu"] * N
+        
+        rm = info["nu"] * N 
+
+
+        if rb > 0:
+            events.append(("birth", cid))
+            rates.append(rb)
+
+        if rd > 0:
+            events.append(("death", cid))
+            rates.append(rd)
+
+        if rm > 0:
+            events.append(("mutation", cid))
+            rates.append(rm)
+
+    if not rates:
+        return 
+
+    rates = np.array(rates, dtype=float)
+    R = rates.sum()
+
+    if R <= 0:
+        return 
+    
+    return R, rates, events
+
+def choose_event(rates,R,rng,events):
+    # Choose event
+
+    u2 = rng.random()
+    cumulative = np.cumsum(rates / R)
+    k = np.searchsorted(cumulative, u2)
+
+    event_type, cid = events[k]
+    return event_type, cid
+
+def advance_instability(clones, tau):
+    for info in clones.values():
+        if info["N"] > 0:
+            info["G"] += info["rhoG"] * tau
+
+def main_sim(
+        
+    N0=100,
+    lambda0=0.30,
+    mu0=0.20,
+    nu0=0.01,
+    d1_0=0.0,
+    d2_0=0.0,
+    T_max=50.0,
+    seed=None,
+    use_logistic=False,
+    K0=100_000_000,
+    decline=0.0,
+    Kmin=1.0,
+    fitness_gain=0.05,
+):
+    rng = np.random.default_rng(seed)
+
+    # Wild type clone
+    clones = {
+        (): {
+            "N": int(N0),
+            "lambda": float(lambda0),
+            "mu": float(mu0),
+            "nu": float(nu0),
+            "d1": float(d1_0),
+            "d2": float(d2_0),
+            "parent": None,
+            "children_count": 0,
+        }
+    }
+
+    times = [0.0]
+    history = [{
+        cid: info["N"] for cid, info in clones.items()
+    }]
+
+    t = 0.0
+
+    while t < T_max and sum(info["N"] for info in clones.values()) > 0:
+        g=crowding_factor
+        R,rates,events =get_rates(clones,t,g)
+        tau=waiting_time(rates,R,rng)
+        t+=tau
+        if t > T_max:
+            break
+        event_type,cid=choose_event(rates,R,rng,events)
+        
+
+        if event_type == "birth":
+            divide(clones,cid)
+
+        elif event_type == "death":
+            kill(clones,cid)
+
+        elif event_type == "mutation":
+            mutate(clones,cid)
+
+        times.append(t)
+        history.append({
+            cid: info["N"] for cid, info in clones.items()
+        })
+    return times, history,clones
+        
+
+
