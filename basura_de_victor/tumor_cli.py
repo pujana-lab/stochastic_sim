@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from src.events import CloneId, Event, EventsCollection
-
+from src.cloneId import CloneId
+from src.event import Event
+from src.rate_matrix import RateMatrix
 
 
 
@@ -185,10 +186,10 @@ class TumorSimulation:
             return 0.0
         return max(0.0,1.0-self.total_population()/Kt)
 
-    def build_event_table(self) -> EventsCollection:
+    def build_event_table(self) -> RateMatrix:
         if not self.config.use_logistic_adapted:
           g = self.crowding_factor_adapted(self.t)
-        events_collection=EventsCollection()
+        rate_matrix=RateMatrix()
 
         for cid, clone in self.clones.items():
             if not clone.is_alive():
@@ -200,13 +201,13 @@ class TumorSimulation:
             rm = clone.mutation_prob()
 
             if rb > 0:
-                events_collection.add_event(Event("birth", cid, rb))
+                rate_matrix.add_event(Event("birth", cid, rb))
             if rd > 0:
-                events_collection.add_event(Event("death", cid, rd))
+                rate_matrix.add_event(Event("death", cid, rd))
             if rm > 0:
-                events_collection.add_event(Event("mutation", cid, rm))
+                rate_matrix.add_event(Event("mutation", cid, rm))
 
-        return events_collection
+        return rate_matrix
 
 
     def sample_waiting_time(self, total_rate: float) -> float:
@@ -215,11 +216,11 @@ class TumorSimulation:
         u = self.rng.random()
         return -np.log(u) / total_rate
 
-    def choose_event(self, events_collection:EventsCollection) -> Event:
-        events = events_collection.events
+    def choose_event(self, rate_matrix:RateMatrix) -> Event:
+        events = rate_matrix.events
         
         rates = np.array([event.rate for event in events], dtype=float)
-        cumulative = np.cumsum(rates / events_collection.get_total_rate())
+        cumulative = np.cumsum(rates / rate_matrix.get_total_rate())
         u = self.rng.random()
         idx = np.searchsorted(cumulative, u, side="right")
         if idx >= len(events):

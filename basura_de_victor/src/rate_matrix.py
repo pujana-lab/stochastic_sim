@@ -1,17 +1,7 @@
-from dataclasses import dataclass
-from typing import Tuple
-
-CloneId = Tuple[int, ...]
-
-@dataclass
-class Event:
-    kind: str
-    clone_id: CloneId
-    rate: float
+from .event import Event
 
 
-
-class EventsCollection:
+class RateMatrix:
     def __init__(self):
         self.events: list[Event] = []
 
