@@ -2,118 +2,17 @@ from __future__ import annotations
 
 import argparse
 import csv
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
 from src.cloneId import CloneId
 from src.event import Event
 from src.rate_matrix import RateMatrix
-
-
-
-@dataclass
-class SimulationConfig:
-    N0: int = 10
-    lambda0: float = 0.50
-    mu0: float = 0.20
-    nu0: float = 0.00
-
-    d1_0: float = 0.0
-    d2_0: float = 0.0
-
-    instability_0: float = 0.0
-    buildup_0: float = 0.0000
-    base_instability_buildup: float = 0.00000
-
-    mutation_instability_jump: float = 0.05
-    mutation_buildup_gain: float = 0.0001
-
-    T_max: float = 5000
-    seed: Optional[int] = None
-
-    use_logistic: bool = True
-    use_logistic_adapted: bool=True
-    K0: float = 100
-    decline: float = 0.0
-    Kmin: float = 1.0
-
-    fitness_gain: float = 0.05
-
-
-@dataclass
-class Clone:
-    clone_id: CloneId
-    N: int
-    birth_rate: float
-    death_rate: float
-    mutation_rate: float
-
-    instability: float = 0.0
-    buildup: float = 0.0
-    d1: float = 0.0
-    d2: float = 0.0
-
-    parent: Optional[CloneId] = None
-    children_count: int = 0
-
-    def is_alive(self) -> bool:
-        return self.N > 0
-
-    def mutation_multiplier(self) -> float:
-        return 1.0 + self.instability
-
-    def birth_prob(self, crowding: float) -> float:
-        return self.birth_rate * self.N * crowding
-
-    def death_prob(self) -> float:
-        return self.death_rate * self.N
-
-    def mutation_prob(self) -> float:
-        return self.mutation_rate * self.N * self.mutation_multiplier()
-
-    def divide(self) -> None:
-        self.N += 1
-
-    def die(self) -> None:
-        if self.N > 0:
-            self.N -= 1
-
-    def next_child_id(self) -> CloneId:
-        self.children_count += 1
-        return self.clone_id + (self.children_count,)
-
-    def advance_instability(self, dt: float, base_buildup: float) -> None:
-        self.instability += (base_buildup + self.buildup) * dt
-
-    def mutated_child(
-        self,
-        fitness_gain: float,
-        instability_jump: float,
-        buildup_gain: float,
-    ) -> "Clone":
-        if self.N <= 0:
-            raise ValueError("Cannot mutate a dead clone.")
-
-        self.N -= 1
-        child_id = self.next_child_id()
-
-        return Clone(
-            clone_id=child_id,
-            N=1,
-            birth_rate=self.birth_rate * (1.0 + fitness_gain),
-            death_rate=self.death_rate,
-            mutation_rate=self.mutation_rate,
-            instability=self.instability + instability_jump,
-            buildup=self.buildup + buildup_gain,
-            d1=self.d1,
-            d2=self.d2,
-            parent=self.clone_id,
-        )
-
-
+from src.clone import Clone
+from src.crowding_strategy import CrowdingStrategy, SimpleCrowding, AdaptedCrowding
+from src.simulation_config import SimulationConfig
 
 
 
@@ -139,6 +38,13 @@ class TumorSimulation:
         }
 
         self.times: List[float] = [0.0]
+
+        self.crowding_strategy: CrowdingStrategy = (
+            AdaptedCrowding(config)
+            if config.use_logistic_adapted
+            else SimpleCrowding(config)
+        )
+
         self.history: List[Dict[CloneId, int]] = [self.snapshot()]
 
     def advance_all_instability(self, dt: float) -> None:
@@ -151,12 +57,14 @@ class TumorSimulation:
     def snapshot(self)-> Dict[CloneId,dict]:
         return {
             cid:{
-                "N": clone.N,
-                 "rb": clone.birth_prob(self.crowding_factor_adapted(clone,self.t) if self.config.use_logistic_adapted else self.crowding_factor(self.t)),
-                 "rd": clone.death_prob()
+                 "N": clone.N,
+                 "rb": clone.birth_rate_effective(
+                    crowding=self.crowding_strategy.crowding(clone, self.t, self.total_population)
+                ),
+                 "rd": clone.death_rate_effective()
                  }
-                 for cid, clone in self.clones.items()
-                 }
+            for cid, clone in self.clones.items()
+        }
             
  
     def total_population(self) -> int:
@@ -165,6 +73,7 @@ class TumorSimulation:
     def carrying_capacity(self, t: float) -> float:
         cfg = self.config
         return max(cfg.Kmin, cfg.K0 - cfg.decline * t)
+
     def carrying_capacity_adapted(self,clone,t:float)->float:
         cfg=self.config
         return max(cfg.Kmin,(cfg.K0/(1-(clone.death_rate/clone.birth_rate))-cfg.decline* t))
@@ -178,6 +87,7 @@ class TumorSimulation:
             return 0.0
 
         return max(0.0, 1.0 - self.total_population() / Kt)
+
     def crowding_factor_adapted(self,clone,t:float)->float:
         if not self.config.use_logistic:
             return 1.0
@@ -187,18 +97,17 @@ class TumorSimulation:
         return max(0.0,1.0-self.total_population()/Kt)
 
     def build_rate_matrix(self) -> RateMatrix:
-        if not self.config.use_logistic_adapted:
-          g = self.crowding_factor_adapted(self.t)
+        total_N = self.total_population()
         rate_matrix=RateMatrix()
 
         for cid, clone in self.clones.items():
             if not clone.is_alive():
                 continue
-            if self.config.use_logistic_adapted:
-                g=self.crowding_factor_adapted(clone,self.t)
-            rb = clone.birth_prob(g)
-            rd = clone.death_prob()
-            rm = clone.mutation_prob()
+            crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
+
+            rb = clone.birth_rate_effective(crowding = crowding_value)
+            rd = clone.death_rate_effective()
+            rm = clone.mutation_rate_effective()
 
             if rb > 0:
                 rate_matrix.add_event(Event("birth", cid, rb))
@@ -425,7 +334,7 @@ def main() -> None:
     args = parser.parse_args()
 
     config = config_from_args(args)
-    sim = TumorSimulation(config=SimulationConfig)
+    sim = TumorSimulation(config=config)
     times, history, clones = sim.run()
 
     print_summary(times, clones, args.top)
