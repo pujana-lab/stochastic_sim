@@ -26,5 +26,8 @@ class AdaptedCrowding(CrowdingStrategy):
         if not self.config.use_logistic:
             return 1.0
         cfg = self.config
-        Kt = max(cfg.Kmin, cfg.K0 / (1 - clone.death_rate / clone.birth_rate) - cfg.decline * t)
+        denom = 1 - clone.death_rate / clone.birth_rate
+        if denom <= 0:
+            return 0.0
+        Kt = max(cfg.Kmin, cfg.K0 / denom - cfg.decline * t)
         return max(0.0, 1.0 - total_N / Kt) if Kt > 0 else 0.0

@@ -38,9 +38,8 @@ class Clone:
     def divide(self) -> None:
         self.N += 1
 
-    def die(self) -> None:
-        if self.N > 0:
-            self.N -= 1
+    def kill(self) -> None:
+        self.N = max(0, self.N - 1)
 
     def next_child_id(self) -> CloneId:
         self.children_count += 1
@@ -49,20 +48,14 @@ class Clone:
     def advance_instability(self, dt: float, base_buildup: float) -> None:
         self.instability += (base_buildup + self.buildup) * dt
 
-    def mutated_child(
-        self,
-        fitness_gain: float,
-        instability_jump: float,
-        buildup_gain: float,
-    ) -> "Clone":
+    def mutate(self, fitness_gain: float, instability_jump: float, buildup_gain: float) -> "Clone":
+
         if self.N <= 0:
             raise ValueError("Cannot mutate a dead clone.")
 
-        self.N -= 1
-        child_id = self.next_child_id()
-
-        return Clone(
-            clone_id=child_id,
+        self.kill()
+        child = Clone(
+            clone_id=self.next_child_id(),
             N=1,
             birth_rate=self.birth_rate * (1.0 + fitness_gain),
             death_rate=self.death_rate,
@@ -72,4 +65,7 @@ class Clone:
             d1=self.d1,
             d2=self.d2,
             parent=self.clone_id,
+            children_count=0,
         )
+        return child
+

@@ -5,20 +5,26 @@ from .event import Event
 class RateMatrix:
     def __init__(self):
         self.events: list[Event] = []
+        self.total_rate: float = None
 
     def add_event(self, event: Event) -> None:
         self.events.append(event)
+        self.total_rate = None
 
     def clear(self) -> None:
         self.events.clear()
+        self.total_rate = None
 
     def get_total_rate(self) -> float:
-        return sum(event.rate for event in self.events)
+        if self.total_rate is None:
+            self.total_rate = sum(event.rate for event in self.events)
+        return self.total_rate
 
     def choose_event(self, u: float) -> Event:
         events = self.events
         rates = np.array([event.rate for event in events], dtype=float)
-        cumulative = np.cumsum(rates / self.get_total_rate())
+        total_rate = self.get_total_rate()
+        cumulative = np.cumsum(rates / total_rate)
 
         idx = np.searchsorted(cumulative, u, side="right")
         if idx >= len(events):

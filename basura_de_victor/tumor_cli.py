@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from src.cloneId import CloneId
+from src.event_type import EventType
 from src.event import Event
 from src.rate_matrix import RateMatrix
 from src.clone import Clone
@@ -50,14 +51,13 @@ class TumorSimulation:
             if clone.is_alive():
                 clone.advance_instability(dt, self.config.base_instability_buildup)
 
-    # def snapshot(self) -> Dict[CloneId, int]:
-    #     return {cid: clone.N for cid, clone in self.clones.items()}
     def snapshot(self)-> Dict[CloneId,dict]:
+        total_N = self.total_population()
         return {
             cid:{
                  "N": clone.N,
                  "rb": clone.birth_rate_effective(
-                    crowding=self.crowding_strategy.crowding(clone, self.t, self.total_population)
+                    crowding=self.crowding_strategy.crowding(clone, self.t, total_N)
                 ),
                  "rd": clone.death_rate_effective()
                  }
@@ -82,12 +82,11 @@ class TumorSimulation:
             rm = clone.mutation_rate_effective()
 
             if rb > 0:
-                rate_matrix.add_event(Event("birth", cid, rb))
+                rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
             if rd > 0:
-                rate_matrix.add_event(Event("death", cid, rd))
+                rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
             if rm > 0:
-                rate_matrix.add_event(Event("mutation", cid, rm))
-
+                rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
         return rate_matrix
 
 
@@ -101,23 +100,27 @@ class TumorSimulation:
         u = self.rng.random()
         return rate_matrix.choose_event(u)
 
+    def introduce_mutation(self, clone: Clone) -> None:
+        assert clone.is_alive(), "Cannot mutate a dead clone."
+        
+        child = clone.mutate(
+            fitness_gain=self.config.fitness_gain,
+            instability_jump=self.config.mutation_instability_jump,
+            buildup_gain=self.config.mutation_buildup_gain
+        )
+        self.clones[child.clone_id] = child
+
     def apply_event(self, event: Event) -> None:
         clone = self.clones[event.clone_id]
 
-        if event.kind == "birth":
+        if event.kind == EventType.BIRTH:
             clone.divide()
 
-        elif event.kind == "death":
-            clone.die()
+        elif event.kind == EventType.DEATH:
+            clone.kill()
 
-        elif event.kind == "mutation":
-            if clone.is_alive():
-                child = clone.mutated_child(
-                    fitness_gain=self.config.fitness_gain,
-                    instability_jump=self.config.mutation_instability_jump,
-                    buildup_gain=self.config.mutation_buildup_gain,
-                )
-                self.clones[child.clone_id] = child
+        elif event.kind == EventType.MUTATION:
+            self.introduce_mutation(clone)
 
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
@@ -125,10 +128,11 @@ class TumorSimulation:
     def step(self) -> bool:
         rate_matrix = self.build_rate_matrix()
         total_rate = rate_matrix.get_total_rate()
+
         if total_rate <= 0 or not rate_matrix.events:
             return False
 
-        tau = self.sample_waiting_time(rate_matrix.get_total_rate())
+        tau = self.sample_waiting_time(total_rate)
         new_t = self.t + tau
 
         if new_t > self.config.T_max:
