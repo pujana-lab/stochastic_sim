@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from src.events import CloneId, Event, EventsCollection
-
+from src.cloneId import CloneId
+from src.event import Event
+from src.rate_matrix import RateMatrix
 
 
 
@@ -185,10 +186,10 @@ class TumorSimulation:
             return 0.0
         return max(0.0,1.0-self.total_population()/Kt)
 
-    def build_event_table(self) -> EventsCollection:
+    def build_rate_matrix(self) -> RateMatrix:
         if not self.config.use_logistic_adapted:
           g = self.crowding_factor_adapted(self.t)
-        events_collection=EventsCollection()
+        rate_matrix=RateMatrix()
 
         for cid, clone in self.clones.items():
             if not clone.is_alive():
@@ -200,13 +201,13 @@ class TumorSimulation:
             rm = clone.mutation_prob()
 
             if rb > 0:
-                events_collection.add_event(Event("birth", cid, rb))
+                rate_matrix.add_event(Event("birth", cid, rb))
             if rd > 0:
-                events_collection.add_event(Event("death", cid, rd))
+                rate_matrix.add_event(Event("death", cid, rd))
             if rm > 0:
-                events_collection.add_event(Event("mutation", cid, rm))
+                rate_matrix.add_event(Event("mutation", cid, rm))
 
-        return events_collection
+        return rate_matrix
 
 
     def sample_waiting_time(self, total_rate: float) -> float:
@@ -215,16 +216,9 @@ class TumorSimulation:
         u = self.rng.random()
         return -np.log(u) / total_rate
 
-    def choose_event(self, events_collection:EventsCollection) -> Event:
-        events = events_collection.events
-        
-        rates = np.array([event.rate for event in events], dtype=float)
-        cumulative = np.cumsum(rates / events_collection.get_total_rate())
+    def choose_event(self, rate_matrix:RateMatrix) -> Event:
         u = self.rng.random()
-        idx = np.searchsorted(cumulative, u, side="right")
-        if idx >= len(events):
-            idx = len(events) - 1
-        return events[idx]
+        return rate_matrix.choose_event(u)
 
     def apply_event(self, event: Event) -> None:
         clone = self.clones[event.clone_id]
@@ -248,12 +242,12 @@ class TumorSimulation:
             raise ValueError(f"Unknown event kind: {event.kind}")
 
     def step(self) -> bool:
-        events_collection = self.build_event_table()
-        total_rate = events_collection.get_total_rate()
-        if total_rate <= 0 or not events_collection.events:
+        rate_matrix = self.build_rate_matrix()
+        total_rate = rate_matrix.get_total_rate()
+        if total_rate <= 0 or not rate_matrix.events:
             return False
 
-        tau = self.sample_waiting_time(events_collection.get_total_rate())
+        tau = self.sample_waiting_time(rate_matrix.get_total_rate())
         new_t = self.t + tau
 
         if new_t > self.config.T_max:
@@ -266,7 +260,7 @@ class TumorSimulation:
 
         self.advance_all_instability(tau)
         self.t = new_t
-        event = self.choose_event(events_collection)
+        event = self.choose_event(rate_matrix)
         self.apply_event(event)
 
         self.times.append(self.t)
