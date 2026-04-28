@@ -43,6 +43,8 @@ class TumorSimulation:
             if config.use_logistic_adapted
             else SimpleCrowding(config)
         )
+        
+        #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
 
         self.history: List[Dict[CloneId, int]] = [self.snapshot()]
 
