@@ -19,6 +19,13 @@ class RateMatrix:
         if self.total_rate is None:
             self.total_rate = sum(event.rate for event in self.events)
         return self.total_rate
+    def get_reaction_number_poisson(self,tau: float) -> int:
+        events= self.events
+        rates = np.array([event.rate for event in events], dtype=float)
+        K_j = np.random.poisson(lam=rates*tau)
+        for i, event in enumerate(events):
+            event.reaction_number = K_j[i]
+        return K_j
 
     def choose_event(self, u: float) -> Event:
         events = self.events
