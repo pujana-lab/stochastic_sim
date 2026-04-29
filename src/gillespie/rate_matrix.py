@@ -1,4 +1,7 @@
+import dataclasses
+
 import numpy as np
+
 from .event import Event
 
 
@@ -19,6 +22,16 @@ class RateMatrix:
         if self.total_rate is None:
             self.total_rate = sum(event.rate for event in self.events)
         return self.total_rate
+        
+    def get_reaction_number_poisson(self, tau: float) -> np.ndarray:
+        events = self.events
+        rates = np.array([event.rate for event in events], dtype=float)
+        K_j = np.random.poisson(lam=rates * tau)
+        self.events = [
+            dataclasses.replace(event, reaction_number=int(K_j[i]))
+            for i, event in enumerate(events)
+        ]
+        return K_j
 
     def choose_event(self, u: float) -> Event:
         events = self.events
