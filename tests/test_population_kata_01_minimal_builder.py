@@ -19,7 +19,7 @@ class TestPopulationInitialization:
         print(groups.items())
         pop = Population(groups=groups)
         assert len(pop.individuals) == 100
-        assert pop.n == 10
+        assert pop.n == 100
             
     def test_population_size_stored(self):
         """Test: el tamaño se almacena correctamente."""
