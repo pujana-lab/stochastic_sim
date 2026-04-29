@@ -78,13 +78,12 @@ class TumorSimulation:
             rb = clone.birth_rate_effective(crowding=crowding_value)
             rd = clone.death_rate_effective()
             rm = clone.mutation_rate_effective()
-            number = 1
             if rb > 0:
-                rate_matrix.add_event(Event(EventType.BIRTH, cid, rb, number))
+                rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
             if rd > 0:
-                rate_matrix.add_event(Event(EventType.DEATH, cid, rd, number))
+                rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
             if rm > 0:
-                rate_matrix.add_event(Event(EventType.MUTATION, cid, rm, number))
+                rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:

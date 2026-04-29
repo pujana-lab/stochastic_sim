@@ -9,5 +9,5 @@ class Event:
     kind: EventType
     clone_id: CloneId
     rate: float
-    reaction_number: int
+    reaction_number: int = 0
 
