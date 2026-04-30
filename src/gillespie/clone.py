@@ -11,6 +11,7 @@ class Clone:
     birth_rate: float
     death_rate: float
     mutation_rate: float
+    exhasution_rate: float
 
     instability: float = 0.0
     buildup: float = 0.0
@@ -35,6 +36,9 @@ class Clone:
     def mutation_rate_effective(self) -> float:
         return self.mutation_rate * self.N * self.mutation_multiplier()
 
+    def exhaustion_rate_effective(self) -> float:
+        return self.exhaustion_rate * self.N
+        
     def divide(self) -> None:
         self.N += 1
 
