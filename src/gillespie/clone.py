@@ -2,16 +2,18 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.gillespie.cloneId import CloneId
-
+from src.gillespie.clone_type import CloneType
 
 @dataclass
 class Clone:
     clone_id: CloneId
     N: int
+    # cell_type: CloneType = CloneType.BASE
     birth_rate: float
     death_rate: float
     mutation_rate: float
-    exhasution_rate: float
+    # exhaustion_rate: float
+    cell_type: str = ""
 
     instability: float = 0.0
     buildup: float = 0.0
@@ -60,6 +62,7 @@ class Clone:
         self.kill()
         child = Clone(
             clone_id=self.next_child_id(),
+            # cell_type=CloneType.MUTATED,
             N=1,
             birth_rate=self.birth_rate * (1.0 + fitness_gain),
             death_rate=self.death_rate,
@@ -72,4 +75,17 @@ class Clone:
             children_count=0,
         )
         return child
+    def __str__(self) -> str:
+        return str(self.cell_type)
+class WildTypeClone(Clone):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cell_type = CloneType.BASE
+
+class MutatedClone(Clone):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cell_type = CloneType.MUTATED
+
+        
 

@@ -11,27 +11,19 @@ from src.gillespie.event_type import EventType
 from src.gillespie.rate_matrix import RateMatrix
 from src.gillespie.crowding_strategy import CrowdingStrategy, SimpleCrowding, AdaptedCrowding
 from src.gillespie.simulation_config import SimulationConfig
-
+from src.gillespie.clone_factory import CloneFactory
 
 class TumorSimulation:
     def __init__(self, config: SimulationConfig) -> None:
         self.config = config
         self.rng = np.random.default_rng(config.seed)
+        self.clone_factory = CloneFactory(config)
         self.t = 0.0
-
+        new_id=()
+        new_clone=self.clone_factory.create_clone(new_id)
+        # AHORA MISMO EL SIM SOLO TIENE HARDCODED INIT CLONE COMO WT, deberia incluir posibilidad de elegir distribuciones de initial conditions
         self.clones: Dict[CloneId, Clone] = {
-            (): Clone(
-                clone_id=(),
-                N=int(config.N0),
-                birth_rate=float(config.lambda0),
-                death_rate=float(config.mu0),
-                mutation_rate=float(config.nu0),
-                instability=float(config.instability_0),
-                buildup=float(config.buildup_0),
-                d1=float(config.d1_0),
-                d2=float(config.d2_0),
-                parent=None,
-            )
+            new_id: new_clone
         }
 
         self.times: List[float] = [0.0]
@@ -74,10 +66,13 @@ class TumorSimulation:
             if not clone.is_alive():
                 continue
             crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
-
+            
+            #ESTO HAY QUE SACARLO 
+            #-----------
             rb = clone.birth_rate_effective(crowding=crowding_value)
             rd = clone.death_rate_effective()
             rm = clone.mutation_rate_effective()
+            #-----------
             if rb > 0:
                 rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
             if rd > 0:
