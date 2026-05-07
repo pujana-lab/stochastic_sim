@@ -1,7 +1,7 @@
 import pytest
 from src.gillespie.clone import Clone
-
-
+from src.gillespie.simulation_config import SimulationConfig
+from src.gillespie.clone_factory import CloneFactory
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 def make_clone(**kwargs) -> Clone:
@@ -15,7 +15,22 @@ def make_clone(**kwargs) -> Clone:
     )
     defaults.update(kwargs)
     return Clone(**defaults)
-
+def make_clone_factory():
+    config = SimulationConfig(
+        N0=10,
+        lambda0=0.5,
+        mu0=0.2,
+        nu0=0.01,
+        instability_0=0.0,
+        buildup_0=0.0,
+        d1_0=0.0,
+        d2_0=0.0,
+        fitness_gain=0.1,
+        mutation_instability_jump=0.05,
+        mutation_buildup_gain=0.02,
+        seed=42
+    )
+    return CloneFactory(config)
 
 # ── is_alive ──────────────────────────────────────────────────────────────────
 
@@ -153,3 +168,15 @@ def test_advance_instability_uses_base_buildup():
     c = make_clone(instability=0.0, buildup=0.0)
     c.advance_instability(dt=5.0, base_buildup=0.02)
     assert c.instability == pytest.approx(0.1)
+
+def test_clone_factory_create_clone():
+    factory = make_clone_factory()
+    clone_id = (1,)
+    clone = factory.create_clone(clone_id,clone_type="mutated")
+    assert clone.clone_id == clone_id
+    assert clone.N == 10
+    assert clone.birth_rate == 0.5
+    assert clone.death_rate == 0.2
+    assert clone.mutation_rate == 0.01
+    assert clone.instability == 0.0
+    assert (str(clone)) == "soy un clone WT"
