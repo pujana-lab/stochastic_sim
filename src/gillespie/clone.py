@@ -3,7 +3,7 @@ from typing import Optional
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone_type import CloneType
-
+from src.gillespie.clone_factory import CloneFactory
 @dataclass
 class Clone:
     clone_id: CloneId
@@ -12,9 +12,9 @@ class Clone:
     birth_rate: float
     death_rate: float
     mutation_rate: float
-    # exhaustion_rate: float
+    exhaustion_rate: float
     cell_type: str = ""
-
+    K: int
     instability: float = 0.0
     buildup: float = 0.0
     d1: float = 0.0
@@ -30,7 +30,7 @@ class Clone:
         return 1.0 + self.instability
 
     def birth_rate_effective(self, crowding: float) -> float:
-        return self.birth_rate * self.N * crowding
+        return self.birth_rate * self.N * crowding 
 
     def death_rate_effective(self) -> float:
         return self.death_rate * self.N
@@ -54,27 +54,20 @@ class Clone:
     def advance_instability(self, dt: float, base_buildup: float) -> None:
         self.instability += (base_buildup + self.buildup) * dt
 
-    def mutate(self, fitness_gain: float, instability_jump: float, buildup_gain: float) -> "Clone":
+    def mutate(self) -> "Clone":
 
         if self.N <= 0:
             raise ValueError("Cannot mutate a dead clone.")
 
         self.kill()
-        child = Clone(
+        child = CloneFactory.create_clone(
             clone_id=self.next_child_id(),
-            # cell_type=CloneType.MUTATED,
-            N=1,
-            birth_rate=self.birth_rate * (1.0 + fitness_gain),
-            death_rate=self.death_rate,
-            mutation_rate=self.mutation_rate,
-            instability=self.instability + instability_jump,
-            buildup=self.buildup + buildup_gain,
-            d1=self.d1,
-            d2=self.d2,
-            parent=self.clone_id,
-            children_count=0,
+            clone_type= "mutated",
+            parent= self.clone_id
         )
-        return child
+        
+    
+        return child        
     def __str__(self) -> str:
         return str(self.cell_type)
 class WildTypeClone(Clone):
@@ -86,6 +79,20 @@ class MutatedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.MUTATED
+    def death_rate_effective(self,N_I: int,activation:float):
+        return super().death_rate_effective() + self.N*N_I*activation
+    
+
+class ImmuneClone(Clone):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cell_type = CloneType.IMMUNE
+
+
+class ExhaustedClone(Clone):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cell_type = CloneType.EXHAUSTED   
 
         
 

@@ -19,11 +19,14 @@ class TumorSimulation:
         self.rng = np.random.default_rng(config.seed)
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
-        new_id=()
-        new_clone=self.clone_factory.create_clone(new_id)
+        
+        
         # AHORA MISMO EL SIM SOLO TIENE HARDCODED INIT CLONE COMO WT, deberia incluir posibilidad de elegir distribuciones de initial conditions
         self.clones: Dict[CloneId, Clone] = {
-            new_id: new_clone
+            (): self.clone_factory.create_clone(clone_id=(),clone_type="wild_type",N=self.config.N0),
+            (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
+            (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
+            (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
 
         self.times: List[float] = [0.0]
@@ -72,6 +75,7 @@ class TumorSimulation:
             rb = clone.birth_rate_effective(crowding=crowding_value)
             rd = clone.death_rate_effective()
             rm = clone.mutation_rate_effective()
+            re = clone.exhaustion_rate_effective()
             #-----------
             if rb > 0:
                 rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
@@ -79,6 +83,8 @@ class TumorSimulation:
                 rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
             if rm > 0:
                 rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
+            if re > 0:
+                rate_matrix.add_event(Event(EventType.EXHAUSTION,cid,re))
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:
@@ -94,7 +100,9 @@ class TumorSimulation:
             buildup_gain=self.config.mutation_buildup_gain,
         )
         self.clones[child.clone_id] = child
-
+    def _induce_exhaustion(self,clone:Clone) -> None:
+        self.clones[(-1,)].kill()
+        self.clones[(-2,)].divide()
     def _apply_event(self, event: Event) -> None:
         clone = self.clones[event.clone_id]
         if event.kind == EventType.BIRTH:
@@ -103,6 +111,8 @@ class TumorSimulation:
             clone.kill()
         elif event.kind == EventType.MUTATION:
             self._introduce_mutation(clone)
+        elif event.kind == EventType.EXHAUSTION:
+            self._induce_exhaustion(clone)
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
 
