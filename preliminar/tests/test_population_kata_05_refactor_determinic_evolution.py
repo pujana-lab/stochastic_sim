@@ -6,9 +6,9 @@ Kata 05: Refactorización de la evolución determinista.
 
 """
 
-from src.population import Population
-from src.population import SubPopulation
-from src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from preliminar.src.population import Population
+from preliminar.src.population import SubPopulation
+from preliminar.src.evolution_engine_deterministic import EvolutionEngineDeterministic
 
 class TestEvolutionEngineDeterministic:
     """Tests para la evolución determinista de la población."""

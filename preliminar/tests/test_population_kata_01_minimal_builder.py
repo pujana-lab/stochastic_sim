@@ -5,8 +5,8 @@ Tests para la simulación de procesos evolutivos de Moran.
 Kata 01: Constructor mínimo.
 """
 
-from src.population import Population
-from src.population import SubPopulation
+from preliminar.src.population import Population
+from preliminar.src.population import SubPopulation
 
 # Tests para la inicialización de la población.
 

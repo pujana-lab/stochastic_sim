@@ -6,8 +6,8 @@ distribución de Bernoulli.
 """
 import random
 
-from src.mutation_engine_interface import MutationEngineInterface
-from src.population import Population
+from preliminar.src.mutation_engine_interface import MutationEngineInterface
+from preliminar.src.population import Population
 
 
 class MutationEngineBernoulli(MutationEngineInterface):

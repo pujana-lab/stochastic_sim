@@ -81,6 +81,7 @@ class MutatedClone(Clone):
         self.cell_type = CloneType.MUTATED
     def death_rate_effective(self,N_I: int,activation:float):
         return super().death_rate_effective() + self.N*N_I*activation
+        
     
 
 class ImmuneClone(Clone):

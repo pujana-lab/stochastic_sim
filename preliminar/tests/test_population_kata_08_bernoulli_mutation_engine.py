@@ -7,10 +7,10 @@ Con seed fijo, el comportamiento es reproducible.
 """
 import pytest
 
-from src.evolution_engine_deterministic import EvolutionEngineDeterministic
-from src.mutation_engine_bernoulli import MutationEngineBernoulli
-from src.population import Population, SubPopulation
-from src.simulator import Simulator
+from preliminar.src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from preliminar.src.mutation_engine_bernoulli import MutationEngineBernoulli
+from preliminar.src.population import Population, SubPopulation
+from preliminar.src.simulator import Simulator
 
 
 class TestMutationEngineBernoulli:

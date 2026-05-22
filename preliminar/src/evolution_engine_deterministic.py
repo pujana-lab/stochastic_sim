@@ -1,4 +1,4 @@
-from src.evolution_engine_interface import EvolutionEngineInterface
+from preliminar.src.evolution_engine_interface import EvolutionEngineInterface
 
 class EvolutionEngineDeterministic(EvolutionEngineInterface):
     """Motor de evolución determinista para el proceso de Moran."""

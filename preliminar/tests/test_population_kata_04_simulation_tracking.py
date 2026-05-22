@@ -5,10 +5,10 @@ Tests para la simulación de procesos evolutivos de Moran.
 Kata 04: Seguimiento de la simulación.
 """
 
-from src.simulator import Simulator
-from src.population import Population
-from src.population import SubPopulation
-from src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from preliminar.src.simulator import Simulator
+from preliminar.src.population import Population
+from preliminar.src.population import SubPopulation
+from preliminar.src.evolution_engine_deterministic import EvolutionEngineDeterministic
 
 class TestPopulationSimulationTracking:
     """Tests para el seguimiento de la simulación de la población."""

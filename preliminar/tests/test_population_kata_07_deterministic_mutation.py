@@ -10,10 +10,10 @@ En esta kata se comprueba:
 """
 import pytest
 
-from src.population import Population, SubPopulation
-from src.evolution_engine_deterministic import EvolutionEngineDeterministic
-from src.mutation_engine_deterministic import MutationEngineDeterministic
-from src.simulator import Simulator
+from preliminar.src.population import Population, SubPopulation
+from preliminar.src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from preliminar.src.mutation_engine_deterministic import MutationEngineDeterministic
+from preliminar.src.simulator import Simulator
 
 
 @pytest.fixture

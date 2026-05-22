@@ -4,8 +4,8 @@ mutation_engine_deterministic.py - Motor de mutación determinista.
 La mutación ocurre cada `every_n_steps` pasos, siempre sobre el mismo
 grupo víctima y generando siempre el mismo grupo mutante.
 """
-from src.mutation_engine_interface import MutationEngineInterface
-from src.population import Population
+from preliminar.src.mutation_engine_interface import MutationEngineInterface
+from preliminar.src.population import Population
 
 
 class MutationEngineDisabled(MutationEngineInterface):
