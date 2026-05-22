@@ -3,25 +3,32 @@ from typing import Optional
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone_type import CloneType
-from src.gillespie.clone_factory import CloneFactory
+from src.gillespie.simulation_config import SimulationConfig
+from src.gillespie.crowding_strategy import CrowdingStrategy
+
 @dataclass
 class Clone:
-    clone_id: CloneId
-    N: int
-    # cell_type: CloneType = CloneType.BASE
-    birth_rate: float
-    death_rate: float
-    mutation_rate: float
-    exhaustion_rate: float
-    cell_type: str = ""
-    K: int
-    instability: float = 0.0
-    buildup: float = 0.0
-    d1: float = 0.0
-    d2: float = 0.0
+    def __init__(self, clone_id: CloneId, config: SimulationConfig, N: int = 1, parent: Optional[CloneId] = None):
+        
+        self.clone_id: CloneId = clone_id
+        self.N = N
+        self.parent= parent
+        self.children_count= 0
+        
+        self.birth_rate: float = config.lambda0
+        self.death_rate: float = config.mu0
+        self.mutation_rate: float = 0.0
+        self.exhaustion_rate: float = 0.0
 
-    parent: Optional[CloneId] = None
-    children_count: int = 0
+        self.K: int = 0.0
+        self.K_min: int = config.Kmin
+
+
+        self.cell_type: str = ""
+        self.instability: float = 0.0
+        self.buildup: float = 0.0
+        self.d1: float = 0.0
+        self.d2: float = 0.0
 
     def is_alive(self) -> bool:
         return self.N > 0
@@ -52,48 +59,45 @@ class Clone:
         return self.clone_id + (self.children_count,)
 
     def advance_instability(self, dt: float, base_buildup: float) -> None:
-        self.instability += (base_buildup + self.buildup) * dt
-
-    def mutate(self) -> "Clone":
-
-        if self.N <= 0:
-            raise ValueError("Cannot mutate a dead clone.")
-
-        self.kill()
-        child = CloneFactory.create_clone(
-            clone_id=self.next_child_id(),
-            clone_type= "mutated",
-            parent= self.clone_id
-        )
-        
-    
-        return child        
+        self.instability += (base_buildup + self.buildup) * dt       
     def __str__(self) -> str:
-        return str(self.cell_type)
+        return self.cell_type.value if isinstance(self.cell_type, CloneType) else str(self.cell_type)
+
+
+# de nuevo aqui hay que pasarle el diccionario de valores N_loquesea y desde ahi pasarle el crowdingstrategy que elijamos y calcule el numero
+
 class WildTypeClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.BASE
+    def birth_rate_effective(self, crowding):
+        return super()
 
 class MutatedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.MUTATED
-    def death_rate_effective(self,N_I: int,activation:float):
-        return super().death_rate_effective() + self.N*N_I*activation
-        
+    def death_rate_effective(self,N_I: int,killrate:float):
+        return super().death_rate_effective() + self.N*N_I*killrate
+
     
 
 class ImmuneClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.IMMUNE
+    def birth_rate_effective(self, crowding,N_C: int,activation:float):
+        return super().birth_rate_effective(crowding)+ self.N*N_C*activation
+    def exhaustion_rate_effective(self,N_C: int):
+        return super().exhaustion_rate_effective()*N_C
 
 
 class ExhaustedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cell_type = CloneType.EXHAUSTED   
+        self.cell_type = CloneType.EXHAUSTED  
+    def birth_rate_effective(self, crowding):
+        return 0.0
 
         
 

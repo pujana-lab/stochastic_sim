@@ -70,6 +70,10 @@ class TumorSimulation:
                 continue
             crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
             
+
+            #Necesito una forma de poder pasar a los calculadores de rb rd rm y re las poblaciones. lo mas sencillo seugramente sea pasarle el diccionario de poblaciones N_C N_I N_W y N_E y luego dentro de clone.py pasarle todo el diccionario y que el elija los valores que necesita. la logica del crowding deberia pasarse a dentro del clone type Class en clone.py y cambiar el valor de total_N para que sea la suma de valores que necesita cada tipo.(por ejemplo el numerador del crowding factor para las wildtyp seria N_W+N_C). entonces el crowding_value se calcula dentro de cada Clase directamente. 
+
+            #Para hacer eso necesito poder agrupar los numeros de poblaciones por el tipo de clon y no por el ID (ahora history va por ID)
             #ESTO HAY QUE SACARLO 
             #-----------
             rb = clone.birth_rate_effective(crowding=crowding_value)
@@ -94,10 +98,12 @@ class TumorSimulation:
 
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
-        child = clone.mutate(
-            fitness_gain=self.config.fitness_gain,
-            instability_jump=self.config.mutation_instability_jump,
-            buildup_gain=self.config.mutation_buildup_gain,
+        clone.kill()
+        child = self.clone_factory.create_clone(
+            clone_id=clone.next_child_id(),
+            clone_type="mutated",
+            N=1,
+            parent=clone.clone_id,
         )
         self.clones[child.clone_id] = child
     def _induce_exhaustion(self,clone:Clone) -> None:

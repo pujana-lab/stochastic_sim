@@ -12,30 +12,15 @@ class CloneFactory:
             x= WildTypeClone(
                 clone_id=clone_id,
                 N=N,
-                birth_rate=self.config.lambda0,
-                death_rate=self.config.mu0,
                 mutation_rate=self.config.nu0,
-                exhaustion_rate= 0.0,
                 K= self.config.K0,
-                instability=self.config.instability_0,
-                buildup=self.config.buildup_0,
-                d1=self.config.d1_0,
-                d2=self.config.d2_0,
-                parent=parent
             )
         elif clone_type == "mutated":
             x= MutatedClone(
                 clone_id=clone_id,
                 N=N,
                 birth_rate=self.config.lambda0 * (1.0 + self.config.fitness_gain),
-                death_rate=self.config.mu0,
-                mutation_rate=0.0,
-                exhaustion_rate= 0.0,
                 K= self.config.K_mutant,
-                instability=self.config.instability_0,
-                buildup=self.config.buildup_0,
-                d1=self.config.d1_0,
-                d2=self.config.d2_0,
                 parent=parent
             )
         elif clone_type == "immune":
@@ -45,14 +30,8 @@ class CloneFactory:
                 
                 birth_rate= self.config.lambda_Immune,
                 death_rate= 0.0,
-                mutation_rate= 0.0,
                 exhaustion_rate= self.config.exhaustion_rate,
                 K= self.config.K_immune,
-                instability=0.0,
-                buildup= 0.0,
-                d1= 0.0,
-                d2= 0.0,
-                parent= None
             )
         elif clone_type == "exhausted":
             x= ExhaustedClone(
@@ -60,14 +39,6 @@ class CloneFactory:
                 N=N,
                 birth_rate=0.0,
                 death_rate=self.config.mu_Exhausted,
-                mutation_rate=0.0,
-                exhaustion_rate= 0.0,
-                K= 0.0,
-                instability=0.0,
-                buildup=0.0,
-                d1=0.0,
-                d2=0.0,
-                parent= None
             )
         else:
             raise ValueError(f"Unknown clone type: {clone_type}")
