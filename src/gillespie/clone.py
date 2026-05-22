@@ -4,7 +4,7 @@ from typing import Optional
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone_type import CloneType
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.crowding_strategy import CrowdingStrategy
+
 
 @dataclass
 class Clone:
