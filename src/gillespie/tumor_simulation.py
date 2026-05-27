@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 import numpy as np
-
+from src.gillespie.clone_type import CloneType
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.tissue_state import TissueState
@@ -21,16 +21,21 @@ class TumorSimulation:
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
         
+
+        #aqui igual merece mas la pena guardarlo como array simplemente o eso o hacerlo por tipos pero en ese caso 
         # Initialize clones
+        # clones_dict:Dict[CloneType,Clone]= {}
+        # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
         clones_dict: Dict[CloneId, Clone] = {
             (): self.clone_factory.create_clone(clone_id=(),clone_type="wild_type",N=self.config.N0),
+            (1,): self.clone_factory.create_clone(clone_id=(1,),clone_type="wild_type",N=1000),
             (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
         
         # Encapsulate tissue state
-        self.tissue_state: TissueState = TissueState(clones=clones_dict)
+        self.tissue_state: TissueState = TissueState(clones_dict)
 
         self.times: List[float] = [0.0]
 
@@ -39,7 +44,7 @@ class TumorSimulation:
             if config.use_logistic_adapted
             else SimpleCrowding(config)
         )
-        
+
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
 
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
@@ -68,13 +73,13 @@ class TumorSimulation:
             re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
             
             if rb > 0:
-                rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
+                rate_matrix.add_event(Event(kind= EventType.BIRTH, clone_id= cid, rate = rb, clone_type=clone.cell_type))
             if rd > 0:
-                rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
+                rate_matrix.add_event(Event(kind= EventType.DEATH, clone_id= cid, rate = rd, clone_type=clone.cell_type))
             if rm > 0:
-                rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
+                rate_matrix.add_event(Event(kind= EventType.MUTATION, clone_id= cid, rate = rm, clone_type=clone.cell_type))
             if re > 0:
-                rate_matrix.add_event(Event(EventType.EXHAUSTION,cid,re))
+                rate_matrix.add_event(Event(kind= EventType.EXHAUSTION,clone_id= cid, rate = re, clone_type=clone.cell_type))
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:

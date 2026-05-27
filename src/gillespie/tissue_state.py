@@ -4,7 +4,7 @@ from typing import Dict, Optional
 from dataclasses import dataclass
 
 from src.gillespie.cloneId import CloneId
-
+from src.gillespie.clone import Clone
 from src.gillespie.clone_type import CloneType
 
 
@@ -15,14 +15,14 @@ class TissueState:
     Contains all clones and their populations, and provides methods to query
     population counts by clone type.
     """
-    
+    ## igual es mejor guardar como array de clones 
     clones: Dict[CloneId, 'Clone']  # type: ignore
     
     def total_population(self) -> int:
         """Get total number of cells across all clones."""
         return sum(clone.N for clone in self.clones.values())
     
-    def population_by_type(self, cell_type: str) -> int:
+    def population_by_type(self, cell_type: CloneType) -> int:
         """Get total population for a specific cell type.
         
         Args:
@@ -33,18 +33,18 @@ class TissueState:
         """
         return sum(
             clone.N for clone in self.clones.values() 
-            if str(clone.cell_type) == cell_type
+            if clone.cell_type == cell_type
         )
     
     def get_clone(self, clone_id: CloneId) -> Optional['Clone']:  # type: ignore
         """Get a specific clone by its ID."""
         return self.clones.get(clone_id)
     
-    def get_clones_by_type(self, cell_type: str) -> Dict[CloneId, 'Clone']:  # type: ignore
+    def get_clones_by_type(self, cell_type: CloneType) -> Dict[CloneId, 'Clone']:  # type: ignore
         """Get all clones of a specific type."""
         return {
             cid: clone for cid, clone in self.clones.items()
-            if str(clone.cell_type) == cell_type
+            if clone.cell_type == cell_type
         }
     
     def snapshot(self) -> Dict[CloneId, dict]:
