@@ -1,9 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone_type import CloneType
 from src.gillespie.simulation_config import SimulationConfig
+
+if TYPE_CHECKING:
+    from src.gillespie.tissue_state import TissueState
 
 
 @dataclass
@@ -11,6 +14,7 @@ class Clone:
     def __init__(self, clone_id: CloneId, config: SimulationConfig, N: int = 1, parent: Optional[CloneId] = None):
         
         self.clone_id: CloneId = clone_id
+        self.config: SimulationConfig = config
         self.N = N
         self.parent= parent
         self.children_count= 0
@@ -36,16 +40,16 @@ class Clone:
     def mutation_multiplier(self) -> float:
         return 1.0 + self.instability
 
-    def birth_rate_effective(self, crowding: float) -> float:
+    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
         return self.birth_rate * self.N * crowding 
 
-    def death_rate_effective(self) -> float:
+    def death_rate_effective(self, tissue_state: "TissueState") -> float:
         return self.death_rate * self.N
 
     def mutation_rate_effective(self) -> float:
         return self.mutation_rate * self.N * self.mutation_multiplier()
 
-    def exhaustion_rate_effective(self) -> float:
+    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
         return self.exhaustion_rate * self.N
         
     def divide(self) -> None:
@@ -70,15 +74,24 @@ class WildTypeClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.BASE
-    def birth_rate_effective(self, crowding):
-        return super()
+    
+    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
+        return super().birth_rate_effective(tissue_state, crowding)
 
 class MutatedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.MUTATED
-    def death_rate_effective(self,N_I: int,killrate:float):
-        return super().death_rate_effective() + self.N*N_I*killrate
+    
+    def death_rate_effective(self, tissue_state: "TissueState") -> float:
+        """Death rate increases due to immune cell killing.
+        Formula: base_death_rate * N + N * N_immune * theta_I
+        (theta_I is a global parameter from config)
+        """
+        base_death = super().death_rate_effective(tissue_state)
+        n_immune = tissue_state.population_by_type("immune")
+        immune_killing = self.N * n_immune * self.config.theta_I
+        return base_death + immune_killing
 
     
 
@@ -86,17 +99,30 @@ class ImmuneClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.IMMUNE
-    def birth_rate_effective(self, crowding,N_C: int,activation:float):
-        return super().birth_rate_effective(crowding)+ self.N*N_C*activation
-    def exhaustion_rate_effective(self,N_C: int):
-        return super().exhaustion_rate_effective()*N_C
+    
+    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
+        """Birth rate increases through activation by cancer cells.
+        Formula: base_birth_rate + N * N_cancer * beta
+        (beta is a global parameter from config)
+        """
+        base_birth = super().birth_rate_effective(tissue_state, crowding)
+        n_cancer = tissue_state.population_by_type("mutated")
+        activation_boost = self.N * n_cancer * self.config.beta
+        return base_birth + activation_boost
+    
+    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+        """Exhaustion: exhaustion_rate * N_immune * N_cancer"""
+        n_cancer = tissue_state.population_by_type("mutated")
+        return self.exhaustion_rate * self.N * n_cancer
 
 
 class ExhaustedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.EXHAUSTED  
-    def birth_rate_effective(self, crowding):
+    
+    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
+        """Exhausted cells cannot divide."""
         return 0.0
 
         

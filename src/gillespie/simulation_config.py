@@ -6,18 +6,18 @@ class SimulationConfig:
     N0: int = 10
     N_immune: int = 10
     N_exhausted: int = 0
+    N_mutant: int = 1
     lambda0: float = 0.50
     lambda_Immune: float = 0.50
     mu0: float = 0.20
     mu_Immune: float = 0.30
     mu_Exhausted: float = 0.2
-    exhaustion_rate: float= 0.01
     nu0: float = 0.00
     T_max: float = 5000
     seed: Optional[int] = None
 
     use_logistic: bool = False
-    use_logistic_adapted: bool=True
+    use_logistic_adapted: bool = True
     K0: int = 100
     K_immune: int = 50
     K_mutant: int = 3000
@@ -26,6 +26,10 @@ class SimulationConfig:
     Kmin: float = 1.0
 
     fitness_gain: float = 0.05
+    
+    # Interaction parameters
+    theta_I: float = 0.0  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
+    beta: float = 0.0     # Activation rate: mutated cells activating immune cells (N_immune * N_mutant * beta)
 
     # IGNORE FOR NOW ---------------
     d1_0: float = 0.0
