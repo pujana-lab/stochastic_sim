@@ -35,7 +35,7 @@ class TumorSimulation:
         }
         
         # Encapsulate tissue state
-        self.tissue_state: TissueState = TissueState(clones_dict)
+        self.tissue_state: TissueState = TissueState(clones=clones_dict)
 
         self.times: List[float] = [0.0]
 
