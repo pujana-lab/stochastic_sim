@@ -3,7 +3,7 @@ mutation_engine_interface.py - Interfaz abstracta para motores de mutación.
 """
 from abc import ABC, abstractmethod
 
-from src.population import Population
+from preliminar.src.population import Population
 
 
 class MutationEngineInterface(ABC):

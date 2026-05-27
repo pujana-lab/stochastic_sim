@@ -5,8 +5,8 @@ Tests para la simulación de procesos evolutivos de Moran.
 Kata 02: Fitness básico.
 """
 
-from src.population import Population
-from src.population import SubPopulation
+from preliminar.src.population import Population
+from preliminar.src.population import SubPopulation
 
 class TestPopulationFitness:
     """Tests para la inicialización del fitness."""

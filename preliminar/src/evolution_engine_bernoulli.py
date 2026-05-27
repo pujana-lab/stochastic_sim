@@ -1,5 +1,5 @@
 import random
-from src.evolution_engine_interface import EvolutionEngineInterface
+from preliminar.src.evolution_engine_interface import EvolutionEngineInterface
 
 class EvolutionEngineBernoulli(EvolutionEngineInterface):
     """Motor de evolución no determinista basado en un proceso de Bernoulli para el proceso de Moran."""

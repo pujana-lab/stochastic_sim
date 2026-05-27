@@ -5,8 +5,8 @@ Tests para la simulación de procesos evolutivos de Moran.
 Kata 03: Evolución determinista.
 """
 
-from src.population import Population
-from src.population import SubPopulation
+from preliminar.src.population import Population
+from preliminar.src.population import SubPopulation
 
 class TestPopulationDeterministicEvolution:
     """Tests para la evolución determinista de la población."""

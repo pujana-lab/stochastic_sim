@@ -15,7 +15,7 @@ class SimpleCrowding(CrowdingStrategy):
     def crowding(self, clone: Clone, t: float, total_N: int) -> float:
         if not self.config.use_logistic:
             return 1.0
-        Kt = max(self.config.Kmin, self.config.K0 - self.config.decline * t)
+        Kt = max(clone.Kmin, clone.K0 - self.config.decline * t)
         return max(0.0, 1.0 - total_N / Kt) if Kt > 0 else 0.0
 
 class AdaptedCrowding(CrowdingStrategy):
@@ -29,5 +29,5 @@ class AdaptedCrowding(CrowdingStrategy):
         denom = 1 - clone.death_rate / clone.birth_rate
         if denom <= 0:
             return 0.0
-        Kt = max(cfg.Kmin, cfg.K0 / denom - cfg.decline * t)
+        Kt = max(clone.Kmin, clone.K0 / denom - cfg.decline * t)
         return max(0.0, 1.0 - total_N / Kt) if Kt > 0 else 0.0

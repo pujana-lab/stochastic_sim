@@ -1,9 +1,9 @@
 import pandas as pd
-from src.evolution_engine_interface import EvolutionEngineInterface
-from src.evolution_engine_deterministic import EvolutionEngineDeterministic
-from src.population import Population
-from src.mutation_engine_disabled import MutationEngineDisabled
-from src.mutation_engine_interface import MutationEngineInterface
+from preliminar.src.evolution_engine_interface import EvolutionEngineInterface
+from preliminar.src.evolution_engine_deterministic import EvolutionEngineDeterministic
+from preliminar.src.population import Population
+from preliminar.src.mutation_engine_disabled import MutationEngineDisabled
+from preliminar.src.mutation_engine_interface import MutationEngineInterface
 
 class Simulator:
     """Clase para simular procesos evolutivos de Moran."""

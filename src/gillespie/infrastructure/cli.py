@@ -26,8 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--buildup-0", dest="buildup_0", type=float, default=0.0)
     p.add_argument("--base-instability-buildup", type=float, default=0.0)
 
-    p.add_argument("--mutation-instability-jump", type=float, default=0.05)
-    p.add_argument("--mutation-buildup-gain", type=float, default=0.0001)
+    p.add_argument("--mutation-instability-jump", type=float, default=0.0)
+    p.add_argument("--mutation-buildup-gain", type=float, default=0.0)
 
     p.add_argument("--T-max", dest="T_max", type=float, default=10.0)
     p.add_argument("--seed", type=int, default=None)

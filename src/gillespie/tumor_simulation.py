@@ -19,11 +19,14 @@ class TumorSimulation:
         self.rng = np.random.default_rng(config.seed)
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
-        new_id=()
-        new_clone=self.clone_factory.create_clone(new_id)
+        
+        
         # AHORA MISMO EL SIM SOLO TIENE HARDCODED INIT CLONE COMO WT, deberia incluir posibilidad de elegir distribuciones de initial conditions
         self.clones: Dict[CloneId, Clone] = {
-            new_id: new_clone
+            (): self.clone_factory.create_clone(clone_id=(),clone_type="wild_type",N=self.config.N0),
+            (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
+            (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
+            (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
 
         self.times: List[float] = [0.0]
@@ -67,11 +70,16 @@ class TumorSimulation:
                 continue
             crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
             
+
+            #Necesito una forma de poder pasar a los calculadores de rb rd rm y re las poblaciones. lo mas sencillo seugramente sea pasarle el diccionario de poblaciones N_C N_I N_W y N_E y luego dentro de clone.py pasarle todo el diccionario y que el elija los valores que necesita. la logica del crowding deberia pasarse a dentro del clone type Class en clone.py y cambiar el valor de total_N para que sea la suma de valores que necesita cada tipo.(por ejemplo el numerador del crowding factor para las wildtyp seria N_W+N_C). entonces el crowding_value se calcula dentro de cada Clase directamente. 
+
+            #Para hacer eso necesito poder agrupar los numeros de poblaciones por el tipo de clon y no por el ID (ahora history va por ID)
             #ESTO HAY QUE SACARLO 
             #-----------
             rb = clone.birth_rate_effective(crowding=crowding_value)
             rd = clone.death_rate_effective()
             rm = clone.mutation_rate_effective()
+            re = clone.exhaustion_rate_effective()
             #-----------
             if rb > 0:
                 rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
@@ -79,6 +87,8 @@ class TumorSimulation:
                 rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
             if rm > 0:
                 rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
+            if re > 0:
+                rate_matrix.add_event(Event(EventType.EXHAUSTION,cid,re))
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:
@@ -88,13 +98,17 @@ class TumorSimulation:
 
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
-        child = clone.mutate(
-            fitness_gain=self.config.fitness_gain,
-            instability_jump=self.config.mutation_instability_jump,
-            buildup_gain=self.config.mutation_buildup_gain,
+        clone.kill()
+        child = self.clone_factory.create_clone(
+            clone_id=clone.next_child_id(),
+            clone_type="mutated",
+            N=1,
+            parent=clone.clone_id,
         )
         self.clones[child.clone_id] = child
-
+    def _induce_exhaustion(self,clone:Clone) -> None:
+        self.clones[(-1,)].kill()
+        self.clones[(-2,)].divide()
     def _apply_event(self, event: Event) -> None:
         clone = self.clones[event.clone_id]
         if event.kind == EventType.BIRTH:
@@ -103,6 +117,8 @@ class TumorSimulation:
             clone.kill()
         elif event.kind == EventType.MUTATION:
             self._introduce_mutation(clone)
+        elif event.kind == EventType.EXHAUSTION:
+            self._induce_exhaustion(clone)
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
 
