@@ -14,7 +14,14 @@ def make_clone(**kwargs) -> Clone:
         instability=0.0,
     )
     defaults.update(kwargs)
-    return Clone(**defaults)
+    
+    config = SimulationConfig(
+        lambda0=defaults["birth_rate"], 
+        mu0=defaults["death_rate"], 
+        nu0=defaults["mutation_rate"]
+    )
+    return Clone(clone_id=defaults["clone_id"], N=defaults["N"], config=config)
+
 def make_clone_factory():
     config = SimulationConfig(
         N0=10,
@@ -36,6 +43,8 @@ def make_clone_factory():
 
 def test_is_alive_when_N_positive():
     assert make_clone(N=5).is_alive()
+
+
 
 def test_not_alive_when_N_zero():
     assert not make_clone(N=0).is_alive()
@@ -59,7 +68,7 @@ def test_kill_does_not_go_below_zero():
     assert c.N == 0
 
 
-# ── effective rates ───────────────────────────────────────────────────────────
+# # ── effective rates ───────────────────────────────────────────────────────────
 
 def test_birth_rate_effective_proportional_to_N():
     c = make_clone(birth_rate=0.5, N=10)
@@ -76,13 +85,13 @@ def test_death_rate_effective_proportional_to_N():
     # effective = 0.2 * 10
     assert c.death_rate_effective() == pytest.approx(2.0)
 
-def test_mutation_rate_effective_uses_multiplier():
+def test_mutation_rate_effective_does_not_use_multiplier():
     c = make_clone(mutation_rate=0.01, instability=1.0, N=10)
-    # multiplier = 1 + instability = 2.0
-    assert c.mutation_rate_effective() == pytest.approx(0.01 * 10 * 2.0)
+    # multiplier is the provided
+    assert c.mutation_rate_effective() == 0.01
 
 
-# ── mutation_multiplier ───────────────────────────────────────────────────────
+# # ── mutation_multiplier ───────────────────────────────────────────────────────
 
 def test_mutation_multiplier_no_instability():
     # instability=0 → multiplier = 1 + 0 = 1
