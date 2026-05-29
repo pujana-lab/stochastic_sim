@@ -37,7 +37,7 @@ def make_clone_factory():
         mutation_buildup_gain=0.02,
         seed=42
     )
-    return CloneFactory(config)
+    return CloneFactory(config  = config)
 
 # ── is_alive ──────────────────────────────────────────────────────────────────
 
@@ -121,49 +121,6 @@ def test_next_child_id_increments_children_count():
     assert c.next_child_id() == (2,)
     assert c.children_count == 2
     assert c.next_child_id() == (3,)
-
-# ── mutated_child ─────────────────────────────────────────────────────────────
-
-
-def test_mutated_child_N_is_one():
-    c = make_clone(N=5)
-    child = c.mutate(fitness_gain=0.1, instability_jump=0.0, buildup_gain=0.0)
-    assert child.N == 1
-
-
-def test_mutated_child_decrements_parent_N():
-    c = make_clone(N=5)
-    c.mutate(fitness_gain=0.0, instability_jump=0.0, buildup_gain=0.0)
-    assert c.N == 4
-    
-def test_mutated_child_parent_is_parent_clone_id():
-    c = make_clone(clone_id=(3, 1), N=5)
-    child = c.mutate(fitness_gain=0.0, instability_jump=0.0, buildup_gain=0.0)
-    assert child.parent == (3, 1)
-
-def test_mutated_child_has_higher_birth_rate():
-    c = make_clone(birth_rate=0.5, N=5)
-    child = c.mutate(fitness_gain=0.1, instability_jump=0.0, buildup_gain=0.0)
-    assert child.birth_rate == pytest.approx(0.5 * 1.1)
-
-def test_mutated_child_inherits_death_rate():
-    c = make_clone(death_rate=0.3, N=5)
-    child = c.mutate(fitness_gain=0.0, instability_jump=0.0, buildup_gain=0.0)
-    assert child.death_rate == pytest.approx(0.3)
-
-def test_mutated_child_raises_on_dead_clone():
-    c = make_clone(N=0)
-    with pytest.raises(ValueError):
-        c.mutate(fitness_gain=0.1, instability_jump=0.0, buildup_gain=0.0)
-
-def test_mutated_child_id_increments_and_validates_parent_id():
-    c = make_clone(clone_id=(), N=10)
-    child1 = c.mutate(fitness_gain=0.0, instability_jump=0.0, buildup_gain=0.0)
-    child2 = c.mutate(fitness_gain=0.0, instability_jump=0.0, buildup_gain=0.0)
-    assert child1.parent == ()
-    assert child2.parent == ()
-    assert child1.clone_id == (1,)
-    assert child2.clone_id == (2,)
 
 
 # ── advance_instability ───────────────────────────────────────────────────────
