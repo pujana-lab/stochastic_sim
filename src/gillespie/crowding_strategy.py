@@ -16,11 +16,7 @@ class SimpleCrowding(CrowdingStrategy):
         if not self.config.use_logistic:
             return 1.0
         Kt = max(clone.K_min, clone.K - self.config.decline * t)
-<<<<<<< HEAD
         return max(0.0, 1.0 - numerator_N / Kt) if Kt > 0 else 0.0
-=======
-        return max(0.0, 1.0 - total_N / Kt) if Kt > 0 else 0.0
->>>>>>> 895c3e7 (Minor fixes)
 
 class AdaptedCrowding(CrowdingStrategy):
     def __init__(self, config: SimulationConfig):
@@ -34,8 +30,4 @@ class AdaptedCrowding(CrowdingStrategy):
         if denom <= 0:
             return 0.0
         Kt = max(clone.K_min, clone.K / denom - cfg.decline * t)
-<<<<<<< HEAD
         return max(0.0, 1.0 - numerator_N / Kt) if Kt > 0 else 0.0
-=======
-        return max(0.0, 1.0 - total_N / Kt) if Kt > 0 else 0.0
->>>>>>> 895c3e7 (Minor fixes)

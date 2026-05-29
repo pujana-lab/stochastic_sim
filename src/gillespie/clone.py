@@ -44,13 +44,13 @@ class Clone:
     def birth_rate_effective(self) -> float:
         return self.birth_rate * self.N 
 
-    def death_rate_effective(self, tissue_state: "TissueState") -> float:
+    def death_rate_effective(self) -> float:
         return self.death_rate * self.N
 
     def mutation_rate_effective(self) -> float:
         return self.mutation_rate * self.N * self.mutation_multiplier()
 
-    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+    def exhaustion_rate_effective(self) -> float:
         return self.exhaustion_rate * self.N
         
     def divide(self) -> None:
