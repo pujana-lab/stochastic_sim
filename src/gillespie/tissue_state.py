@@ -22,11 +22,13 @@ class TissueState:
         """Get total number of cells across all clones."""
         return sum(clone.N for clone in self.clones.values())
     
+    # REPLACED BY GET_POP_MAP
+    # --------------------------------------------------------------------------------
     def population_by_type(self, cell_type: CloneType) -> int:
         """Get total population for a specific cell type.
         
         Args:
-            cell_type: The CloneType as string ('wild_type', 'mutated', 'immune', 'exhausted')
+            cell_type: The CloneType as string ('base', 'mutated', 'immune', 'exhausted')
             
         Returns:
             Total number of cells of this type
@@ -35,6 +37,20 @@ class TissueState:
             clone.N for clone in self.clones.values() 
             if clone.cell_type == cell_type
         )
+    # --------------------------------------------------------------------------------
+    
+    
+    def get_pop_map(self, filter: CloneType = None) -> Dict[CloneType,int]:
+        
+        pop_map: Dict[CloneType, int]={}
+        
+        for clone in self.clones.values():
+            if filter is not None and clone.cell_type != filter:
+                continue
+            pop_map[clone.cell_type] = pop_map.get(clone.cell_type,0) + clone.N
+        
+        return pop_map
+
     
     def get_clone(self, clone_id: CloneId) -> Optional['Clone']:  # type: ignore
         """Get a specific clone by its ID."""

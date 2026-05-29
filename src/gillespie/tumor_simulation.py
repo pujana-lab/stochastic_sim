@@ -46,7 +46,7 @@ class TumorSimulation:
         )
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
-
+        self.popmap: Dict[CloneType,int] =  self.tissue_state.get_pop_map()
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
 
     # ── Internal helpers ──────────────────────────────────────────────────────
@@ -63,8 +63,10 @@ class TumorSimulation:
         for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
-                
-            crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
+            
+            numerator= clone.crowding_value(self.popmap)
+            
+            crowding_value = self.crowding_strategy.crowding(clone=clone, t=self.t, numerator_N=numerator)
             
             # Pass tissue_state to clones so they can access population counts
             rb = clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value)

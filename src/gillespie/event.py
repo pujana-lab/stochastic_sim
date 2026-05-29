@@ -9,7 +9,7 @@ from src.gillespie.event_type import EventType
 class Event:
     kind: EventType
     clone_id: CloneId
-    clone_type: CloneType
     rate: float
+    clone_type: CloneType = CloneType.BASE
     reaction_number: int = 0
 
