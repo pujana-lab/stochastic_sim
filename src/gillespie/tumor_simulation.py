@@ -69,10 +69,10 @@ class TumorSimulation:
             crowding_value = self.crowding_strategy.crowding(clone=clone, t=self.t, numerator_N=numerator)
             
             # Pass tissue_state to clones so they can access population counts
-            rb = clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value)
-            rd = clone.death_rate_effective(tissue_state=self.tissue_state)
+            rb = clone.birth_rate_effective()
+            rd = clone.death_rate_effective()
             rm = clone.mutation_rate_effective()
-            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
+            re = clone.exhaustion_rate_effective()
             
             if rb > 0:
                 rate_matrix.add_event(Event(kind= EventType.BIRTH, clone_id= cid, rate = rb, clone_type=clone.cell_type))

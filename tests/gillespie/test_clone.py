@@ -73,12 +73,12 @@ def test_kill_does_not_go_below_zero():
 def test_birth_rate_effective_proportional_to_N():
     c = make_clone(birth_rate=0.5, N=10)
     # crowding=1 → effective = 0.5 * 10 * 1
-    assert c.birth_rate_effective(crowding=1.0) == pytest.approx(5.0)
+    assert c.birth_rate_effective() == pytest.approx(5.0)
 
 def test_birth_rate_effective_zero_crowding():
     c = make_clone(birth_rate=0.5, N=10)
     # crowding=0 → effective = 0.5 * 10 * 0
-    assert c.birth_rate_effective(crowding=0.0) == pytest.approx(0.0)
+    assert c.birth_rate_effective() == pytest.approx(0.0)
 
 def test_death_rate_effective_proportional_to_N():
     c = make_clone(death_rate=0.2, N=10)
