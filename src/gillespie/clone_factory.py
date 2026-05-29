@@ -12,6 +12,7 @@ class CloneFactory:
             x= WildTypeClone(
                 clone_id=clone_id,
                 N=N,
+                config = self.config
             )
             x.mutation_rate=self.config.nu0,
             x.K= self.config.K0,
@@ -19,7 +20,8 @@ class CloneFactory:
             x= MutatedClone(
                 clone_id=clone_id,
                 N=N,
-                parent=parent
+                parent=parent,
+                config = self.config
             )
             x.birth_rate=self.config.lambda0 * (1.0 + self.config.fitness_gain),
             x.K= self.config.K_mutant,
@@ -28,6 +30,7 @@ class CloneFactory:
                 clone_id=(-1),
                 N=N,
                 K= self.config.K_immune,
+                config = self.config
             )
             x.birth_rate= self.config.lambda_Immune,
             x.death_rate= 0.0,
@@ -36,6 +39,7 @@ class CloneFactory:
             x= ExhaustedClone(
                 clone_id=(-2),
                 N=N,
+                config = self.config
             )
             x.birth_rate=0.0,
             x.death_rate=self.config.mu_Exhausted,

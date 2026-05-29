@@ -96,6 +96,7 @@ class TumorSimulation:
             raise ValueError("Total rate must be positive.")
         return -np.log(self.rng.random()) / total_rate
 
+    # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
         clone.kill()
