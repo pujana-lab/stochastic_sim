@@ -3,6 +3,7 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class SimulationConfig:
+    # TODO: searar parametros por tipo celular. Cambiar pparametros globales aparte. Intentar imlementar escalado por system size.
     N0: int = 10
     N_immune: int = 10
     N_exhausted: int = 0

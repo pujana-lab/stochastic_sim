@@ -10,7 +10,7 @@ from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv
 from src.gillespie.tumor_simulation import TumorSimulation
 
-
+# TODO: actualizar con nuevos valores del SimulationConfig
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Run tumor clone Gillespie simulation.")
 
@@ -98,12 +98,14 @@ def print_summary(times: List[float], clones: Dict[CloneId, Clone], top_k: int) 
             f"buildup={clone.buildup:.6f}"
         )
 
-
+#TODO: mensaje de arranque y progreso
+#TODO: anyadir trazabilidad
+#TODO: ver que va guardando en memoria. (explota)
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    config = config_from_args(args)
+    config = SimulationConfig()
     sim = TumorSimulation(config=config)
     times, history, clones = sim.run()
 

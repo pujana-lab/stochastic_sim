@@ -20,7 +20,8 @@ class TumorSimulation:
         self.rng = np.random.default_rng(config.seed)
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
-        
+        print("arrancando con parametros:")
+        print(config)
         
         #aqui igual merece mas la pena guardarlo como array simplemente o eso o hacerlo por tipos pero en ese caso 
         # Initialize clones

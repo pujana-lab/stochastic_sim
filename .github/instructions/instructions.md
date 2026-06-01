@@ -1,7 +1,7 @@
 ---
 applyTo: '**'
 ---
-
+# TODO: actualizar copilot
 # Instrucciones para Copilot - Proyecto Moran
 
 ## 1. Rol y Responsabilidades

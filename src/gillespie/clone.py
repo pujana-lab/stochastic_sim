@@ -81,7 +81,7 @@ class WildTypeClone(Clone):
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         pop_map = tissue_state.pop_map
-        return pop_map.get(CloneType.MUTATED, 0) + pop_map.get(CloneType.MUTATED, 0)
+        return pop_map.get(CloneType.BASE, 0) + pop_map.get(CloneType.MUTATED, 0)
 
 class MutatedClone(Clone):
     def __init__(self, *args, **kwargs):
