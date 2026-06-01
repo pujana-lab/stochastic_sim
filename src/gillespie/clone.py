@@ -29,11 +29,14 @@ class Clone:
         self.K_min: int = config.Kmin
 
 
-        self.cell_type: str = ""
+        self.cell_type: CloneType
         self.instability: float = 0.0
         self.buildup: float = 0.0
         self.d1: float = 0.0
         self.d2: float = 0.0
+
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        return 0
 
     def is_alive(self) -> bool:
         return self.N > 0
@@ -41,17 +44,17 @@ class Clone:
     def mutation_multiplier(self) -> float:
         return 1.0 + self.instability
 
-    def birth_rate_effective(self) -> float:
-        return self.birth_rate * self.N 
+    def birth_rate_effective(self,tissue_state: "TissueState",crowding:float) -> float:
+        return self.birth_rate * tissue_state.pop_map.get(self.cell_type,0) * crowding
 
-    def death_rate_effective(self) -> float:
-        return self.death_rate * self.N
+    def death_rate_effective(self,tissue_state: "TissueState") -> float:
+        return self.death_rate * tissue_state.pop_map.get(self.cell_type,0)
 
-    def mutation_rate_effective(self) -> float:
-        return self.mutation_rate * self.N * self.mutation_multiplier()
+    def mutation_rate_effective(self,tissue_state: "TissueState") -> float:
+        return self.mutation_rate * tissue_state.pop_map.get(self.cell_type) * self.mutation_multiplier()
 
-    def exhaustion_rate_effective(self) -> float:
-        return self.exhaustion_rate * self.N
+    def exhaustion_rate_effective(self,tissue_state: "TissueState") -> float:
+        return self.exhaustion_rate * tissue_state.pop_map.get(self.cell_type)
         
     def divide(self) -> None:
         self.N += 1
@@ -76,25 +79,17 @@ class WildTypeClone(Clone):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.BASE
 
-    def crowding_numerator(self,popmap: Dict[CloneType,int]) -> int:
-        return popmap["mutated"]+popmap["base"]
-
-    
-    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
-        base_birth = super().birth_rate_effective()
-        return base_birth * crowding
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        pop_map = tissue_state.pop_map
+        return pop_map.get(CloneType.MUTATED, 0) + pop_map.get(CloneType.MUTATED, 0)
 
 class MutatedClone(Clone):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.MUTATED
 
-    def crowding_numerator(self,popmap: Dict[CloneType,int]) -> int:
-        return popmap["mutated"]
-
-    def birth_rate_effective(self,tissue_state: "TissueState",crowding:float ) -> float:
-        base_birth = super().birth_rate_effective()
-        return base_birth * crowding
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        return tissue_state.pop_map.get(CloneType.MUTATED, 0)
 
     
     def death_rate_effective(self, tissue_state: "TissueState") -> float:
@@ -102,9 +97,10 @@ class MutatedClone(Clone):
         Formula: base_death_rate * N + N * N_immune * theta_I
         (theta_I is a global parameter from config)
         """
-        base_death = super().death_rate_effective()
-        n_immune = tissue_state.population_by_type("immune")
-        immune_killing = self.N * n_immune * self.config.theta_I
+        base_death = super().death_rate_effective(tissue_state)
+        self_n = tissue_state.pop_map.get(CloneType.MUTATED, 0)
+        n_immune = tissue_state.pop_map.get(CloneType.IMMUNE, 0)
+        immune_killing = self_n * n_immune * self.config.theta_I
         return base_death + immune_killing
 
     
@@ -114,24 +110,27 @@ class ImmuneClone(Clone):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.IMMUNE
 
-    def crowding_numerator(self,popmap: Dict[CloneType,int]) -> int:
-        return popmap["immune"]+popmap["exhausted"]
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        pop_map = tissue_state.pop_map
+        return pop_map.get(CloneType.IMMUNE, 0) + pop_map.get(CloneType.EXHAUSTED, 0)
     
     def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
         """Birth rate increases through activation by cancer cells.
         Formula: base_birth_rate + N * N_cancer * beta
         (beta is a global parameter from config)
         """
-        base_birth = super().birth_rate_effective()
-        n_cancer = tissue_state.population_by_type("mutated")
-        activation_boost = self.N * n_cancer * self.config.beta
+        base_birth = super().birth_rate_effective(tissue_state, crowding)
+        n_self = tissue_state.pop_map.get(CloneType.IMMUNE, 0)
+        n_cancer = tissue_state.pop_map.get(CloneType.MUTATED, 0)
+        activation_boost = n_self * n_cancer * self.config.beta
         # crowding_effect= #crowding donde tenemos que el numerador de la logistica es n_exhausted+sel
-        return base_birth*crowding + activation_boost
+        return base_birth + activation_boost
     
     def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
         """Exhaustion: exhaustion_rate * N_immune * N_cancer"""
-        n_cancer = tissue_state.population_by_type("mutated")
-        return self.exhaustion_rate * self.N * n_cancer
+        base_exhaustion =  super().exhaustion_rate_effective(tissue_state= tissue_state)
+        n_cancer = tissue_state.pop_map.get(CloneType.MUTATED,0)
+        return base_exhaustion * n_cancer
 
 
 class ExhaustedClone(Clone):
@@ -139,7 +138,7 @@ class ExhaustedClone(Clone):
         super().__init__(*args, **kwargs)
         self.cell_type = CloneType.EXHAUSTED 
 
-    def crowding_numerator(self,popmap: Dict[CloneType,int]) -> int:
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return 0
     
     def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:

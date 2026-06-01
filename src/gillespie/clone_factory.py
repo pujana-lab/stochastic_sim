@@ -12,11 +12,11 @@ class CloneFactory:
     def create_clone(
         self, 
         clone_id: CloneId, 
-        clone_type: str = "wild_type",
+        clone_type: str = "base",
         N: int = 1, 
         parent: Optional[Clone] = None
     ) -> Clone:
-        if clone_type == "wild_type":
+        if clone_type == "base":
             clone = WildTypeClone(
                 clone_id=clone_id,
                 config=self.config,

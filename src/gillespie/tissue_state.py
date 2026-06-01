@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
@@ -17,7 +17,14 @@ class TissueState:
     """
     ## igual es mejor guardar como array de clones 
     clones: Dict[CloneId, 'Clone']  # type: ignore
-    
+    pop_map: Dict[CloneType, int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.update_pop_map()
+
+    def update_pop_map(self) -> None:
+        self.pop_map = self.get_pop_map()
+
     def total_population(self) -> int:
         """Get total number of cells across all clones."""
         return sum(clone.N for clone in self.clones.values())
@@ -40,12 +47,12 @@ class TissueState:
     # --------------------------------------------------------------------------------
     
     
-    def get_pop_map(self, filter: CloneType = None) -> Dict[CloneType,int]:
+    def get_pop_map(self, clone_type: CloneType = None) -> Dict[CloneType,int]:
         
         pop_map: Dict[CloneType, int]={}
         
         for clone in self.clones.values():
-            if filter is not None and clone.cell_type != filter:
+            if clone_type is not None and clone.cell_type != clone_type:
                 continue
             pop_map[clone.cell_type] = pop_map.get(clone.cell_type,0) + clone.N
         
@@ -67,6 +74,7 @@ class TissueState:
         """Create a snapshot of current state for history recording."""
         return {
             cid: {
+                "Type": clone.cell_type.value,
                 "N": clone.N,
                 "rb": clone.birth_rate,
                 "rd": clone.death_rate,
