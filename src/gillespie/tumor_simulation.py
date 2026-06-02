@@ -29,7 +29,7 @@ class TumorSimulation:
         clones_dict: Dict[CloneId, Clone] = {
             (): self.clone_factory.create_clone(clone_id=(),clone_type="base",N=self.config.N0),
             (-3,): self.clone_factory.create_clone(clone_id=(-3,),clone_type="mutated",N=self.config.N_mutant),
-            (-4,4,4,): self.clone_factory.create_clone(clone_id=(-4,4,4),clone_type="mutated_test",N=1000),
+            (-4,4,4,): self.clone_factory.create_clone_draft(clone_id=(-4,4,4),clone_type="mutated_test",N=1000),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
@@ -188,10 +188,12 @@ class TumorSimulation:
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
         if self.config.verbose:
-            print(
-                f"time:{self.t} EVENT: {event.kind.value} KIND: {event.clone_type} "
-                f"POPS:{[(key, value) for key, value in self.tissue_state.pop_map.items()]}"
-            )
+            print("-------------------")
+            print(f"time:{self.t}" )
+            print(f"EVENT: {event.kind.value}")
+            print(f"KIND: {event.clone_type} ")
+            self.tissue_state.print_pop_map()
+            print("-------------------")
         
         return True
     

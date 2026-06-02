@@ -17,7 +17,25 @@ class CloneFactory:
         N: int = 1, 
         parent: Optional[Clone] = None
     ) -> Clone:
-        if clone_type not in Clone._registry:
+        
+
+        
+        if clone_type == "mutated_test":
+            clone = MutatedClone(
+                clone_id=clone_id,
+                config=self.config,
+                N=N,
+                parent=parent
+            )
+
+            clone.next_mutation = "mutated"
+            clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
+            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            clone.death_rate = 0
+            clone.K = self.config.K_mutant
+            return clone
+       
+        elif clone_type not in Clone._registry:
             raise ValueError(f"Unknown clone type: {clone_type}")
     
         clone_class = Clone._registry[clone_type]
