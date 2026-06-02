@@ -4,17 +4,17 @@ from typing import Optional
 @dataclass(frozen=True)
 class SimulationConfig:
     # TODO: searar parametros por tipo celular. Cambiar pparametros globales aparte. Intentar imlementar escalado por system size.
-    N0: int = 10
-    N_immune: int = 10
+    N0: int = 0
+    N_immune: int = 100
     N_exhausted: int = 0
-    N_mutant: int = 1
-    lambda0: float = 0.50
-    lambda_Immune: float = 0.50
-    mu0: float = 0.20
-    mu_Immune: float = 0.30
-    mu_Exhausted: float = 0.2
-    nu0: float = 0.00
-    T_max: float = 5000
+    N_mutant: int = 200
+    lambda0: float = 0.005
+    lambda_Immune: float = 0.005
+    mu0: float = 0.002
+    mu_Immune: float = 0.003
+    mu_Exhausted: float = 0.002
+    nu0: float = 0.0002
+    T_max: float = 25
     seed: Optional[int] = None
 
     use_logistic: bool = False
@@ -26,7 +26,7 @@ class SimulationConfig:
     decline: float = 0.0
     Kmin: float = 1.0
 
-    fitness_gain: float = 0.05
+    fitness_gain: float = 0.2
     
     # Interaction parameters
     theta_I: float = 0.0  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
@@ -43,5 +43,7 @@ class SimulationConfig:
     mutation_instability_jump: float = 0.0
     mutation_buildup_gain: float = 0.0
     # ----------------------------------
+
+    verbose: bool = True
 
 

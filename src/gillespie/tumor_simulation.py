@@ -29,7 +29,8 @@ class TumorSimulation:
         # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
         clones_dict: Dict[CloneId, Clone] = {
             (): self.clone_factory.create_clone(clone_id=(),clone_type="base",N=self.config.N0),
-            (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
+            (-3,): self.clone_factory.create_clone(clone_id=(-3,),clone_type="mutated",N=self.config.N_mutant),
+            (-4,4,4,): self.clone_factory.create_clone(clone_id=(-4,4,4),clone_type="mutated_test",N=1000),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
@@ -157,13 +158,22 @@ class TumorSimulation:
 
         self._advance_all_instability(tau)
         self.t = new_t
+        
+        #TODO: HAY QUE COMPROBAR QUE PASA Y COMO GUARDAMOS DATOS. LA SIMULACION SE HACE CADA VEZ MAS LENTA CUANDO PASA EL TIEMPO (se quedo en t=27 avanzando poquisimo tiempo cada vez durante miles de simulaciones)
         event = rate_matrix.choose_event(self.rng.random())
         self._apply_event(event)
         self.tissue_state.update_pop_map()
 
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
+        if self.config.verbose:
+            print(
+                f"time:{self.t} EVENT: {event.kind.value} KIND: {event.clone_type.value} "
+                f"POPS:{[(key.value, value) for key, value in self.tissue_state.pop_map.items()]}"
+            )
+        
         return True
+    
 
     def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], TissueState]:
         while self.t < self.config.T_max and self.total_population() > 0:

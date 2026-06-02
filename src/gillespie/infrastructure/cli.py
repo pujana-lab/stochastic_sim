@@ -107,16 +107,16 @@ def main() -> None:
 
     config = SimulationConfig()
     sim = TumorSimulation(config=config)
-    times, history, clones = sim.run()
+    times, history, tissue_state = sim.run()
 
-    print_summary(times, clones, args.top)
+    print_summary(times, tissue_state.clones, args.top)
 
     if args.save_history is not None:
         save_history_csv(args.save_history, times, history)
         print(f"\nSaved history to {args.save_history}")
 
     if args.save_clones is not None:
-        save_clones_csv(args.save_clones, clones)
+        save_clones_csv(args.save_clones, tissue_state.clones)
         print(f"Saved clones to {args.save_clones}")
 
 

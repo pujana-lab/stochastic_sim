@@ -7,7 +7,7 @@ from typing import Dict, List
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 
-
+#TODO: cambiar para que devuelva correctamente los clones. ahora mismo ignora immune y exhausted y ademas no esta contando bien el numero de clones nuevos (mutaciones) que se crean
 def clone_id_to_str(clone_id: CloneId) -> str:
     return "root" if len(clone_id) == 0 else ".".join(map(str, clone_id))
 

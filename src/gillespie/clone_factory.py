@@ -33,7 +33,21 @@ class CloneFactory:
                 N=N,
                 parent=parent
             )
+            
             clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            clone.K = self.config.K_mutant
+
+        elif clone_type == "mutated_test":
+            clone = MutatedClone(
+                clone_id=clone_id,
+                config=self.config,
+                N=N,
+                parent=parent
+            )
+            clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
+            
+            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            clone.death_rate = 0
             clone.K = self.config.K_mutant
             
         elif clone_type == "immune":
