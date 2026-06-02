@@ -9,6 +9,26 @@ class CloneFactory:
     def __init__(self, config: SimulationConfig):
         self.config = config
 
+#TODO: testear este nuevo metodo y meterlo en vez del otro (mas escalable). Probablemente ni necesitemos factory.
+    def create_clone_draft(
+        self, 
+        clone_id: CloneId, 
+        clone_type: str = "base",
+        N: int = 1, 
+        parent: Optional[Clone] = None
+    ) -> Clone:
+        if clone_type not in Clone._registry:
+            raise ValueError(f"Unknown clone type: {clone_type}")
+    
+        clone_class = Clone._registry[clone_type]
+        clone = clone_class(
+            clone_id=clone_id,
+            config=self.config,
+            N=N,
+            parent=parent
+        )
+        return clone
+
     def create_clone(
         self, 
         clone_id: CloneId, 
@@ -23,6 +43,7 @@ class CloneFactory:
                 N=N,
                 parent=parent
             )
+            
             
         elif clone_type == "mutated":
             clone = MutatedClone(
