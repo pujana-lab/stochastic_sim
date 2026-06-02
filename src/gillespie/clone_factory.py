@@ -3,7 +3,6 @@ from typing import Optional
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone import Clone, WildTypeClone, MutatedClone, ImmuneClone, ExhaustedClone
 from src.gillespie.cloneId import CloneId
-from src.gillespie.clone_type import CloneType
 
 
 class CloneFactory:
@@ -24,9 +23,6 @@ class CloneFactory:
                 N=N,
                 parent=parent
             )
-            clone.next_mutation = CloneType.MUTATED.value
-            clone.mutation_rate = self.config.nu0
-            clone.K = self.config.K0
             
         elif clone_type == "mutated":
             clone = MutatedClone(
@@ -36,10 +32,7 @@ class CloneFactory:
                 parent=parent
             )
             
-            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
-            clone.K = self.config.K_mutant
 
-        # Prueba de crear un clon mutated que tiene la capacidad de mutar 
         elif clone_type == "mutated_test":
             clone = MutatedClone(
                 clone_id=clone_id,
@@ -48,7 +41,7 @@ class CloneFactory:
                 parent=parent
             )
 
-            clone.next_mutation = CloneType.MUTATED.value
+            clone.next_mutation = "mutated"
             clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
             clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
             clone.death_rate = 0
@@ -61,9 +54,6 @@ class CloneFactory:
                 N=N,
                 parent=parent
             )
-            clone.birth_rate = self.config.lambda_Immune
-            clone.death_rate = 0.0
-            clone.exhaustion_rate = self.config.mu_Immune
             
         elif clone_type == "exhausted":
             clone = ExhaustedClone(
@@ -72,8 +62,6 @@ class CloneFactory:
                 N=N,
                 parent=parent
             )
-            clone.birth_rate = 0.0
-            clone.death_rate = self.config.mu_Exhausted
             
         else:
             raise ValueError(f"Unknown clone type: {clone_type}")

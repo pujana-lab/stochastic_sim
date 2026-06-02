@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from src.gillespie.clone_type import CloneType
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.tissue_state import TissueState
@@ -77,13 +76,13 @@ class TumorSimulation:
     def _build_rate_matrix(self) -> RateMatrix:
         self.tissue_state.update_pop_map()
         rate_matrix = RateMatrix()
-        type_rates: Dict[CloneType, tuple[float, float, float, float]] = {}
+        type_rates: Dict[str, tuple[float, float, float, float]] = {}
 
         for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
 
-            clone_type = clone.cell_type
+            clone_type = clone.get_type()
             if clone_type not in type_rates:
                 crowding_value = self.crowding_strategy.crowding(
                     clone=clone, t=self.t, tissue_state=self.tissue_state
@@ -99,19 +98,19 @@ class TumorSimulation:
 
             if rb > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.BIRTH, clone_id=cid, rate=rb, clone_type=clone.cell_type)
+                    Event(kind=EventType.BIRTH, clone_id=cid, rate=rb, clone_type=clone.get_type())
                 )
             if rd > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.DEATH, clone_id=cid, rate=rd, clone_type=clone.cell_type)
+                    Event(kind=EventType.DEATH, clone_id=cid, rate=rd, clone_type=clone.get_type())
                 )
             if rm > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.MUTATION, clone_id=cid, rate=rm, clone_type=clone.cell_type)
+                    Event(kind=EventType.MUTATION, clone_id=cid, rate=rm, clone_type=clone.get_type())
                 )
             if re > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.cell_type)
+                    Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.get_type())
                 )
         return rate_matrix
 
@@ -190,8 +189,8 @@ class TumorSimulation:
         self.history.append(self.tissue_state.snapshot())
         if self.config.verbose:
             print(
-                f"time:{self.t} EVENT: {event.kind.value} KIND: {event.clone_type.value} "
-                f"POPS:{[(key.value, value) for key, value in self.tissue_state.pop_map.items()]}"
+                f"time:{self.t} EVENT: {event.kind.value} KIND: {event.clone_type} "
+                f"POPS:{[(key, value) for key, value in self.tissue_state.pop_map.items()]}"
             )
         
         return True
