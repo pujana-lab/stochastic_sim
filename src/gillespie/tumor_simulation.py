@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from src.gillespie.clone_type import CloneType
@@ -49,6 +49,23 @@ class TumorSimulation:
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
+
+    def create_clone(
+        self,
+        clone_id: CloneId,
+        clone_type: str = "base",
+        N: int = 1,
+        parent: Optional[Clone] = None,
+    ) -> Clone:
+        clone = self.clone_factory.create_clone(
+            clone_id=clone_id,
+            clone_type=clone_type,
+            N=N,
+            parent=parent,
+        )
+        self.tissue_state.clones[clone.clone_id] = clone
+        self.tissue_state.update_pop_map()
+        return clone
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
@@ -103,20 +120,25 @@ class TumorSimulation:
             raise ValueError("Total rate must be positive.")
         return -np.log(self.rng.random()) / total_rate
 
-    # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
+    # TODO: Make it so that Clone have attribute dictating into what type it mutates: Right now all mutate into type mutated, but we could add levels (TP53 defective mutate into brca defective and so on)
+    # TODO: Add tests for mutation and exhaustion events, and for the overall step logic.
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
-        clone.kill()
-        child = self.clone_factory.create_clone(
+        
+        # Validate that the next mutation type exists in CloneType
+        assert clone.next_mutation is not "", "Clone is not supposed to be mutating"
+        
+        
+        self.create_clone(
             clone_id=clone.next_child_id(),
-            clone_type="mutated",
-            N=1,
+            clone_type=clone.next_mutation,
+            N=2,
             parent=clone.clone_id,
         )
-        self.tissue_state.clones[child.clone_id] = child
+        clone.kill()
     
     def _induce_exhaustion(self, clone: Clone) -> None:
-        self.tissue_state.clones[(-1,)].kill()
+        self.tissue_state.clones[clone.clone_id].kill()
         self.tissue_state.clones[(-2,)].divide()
     
     def _apply_event(self, event: Event) -> None:

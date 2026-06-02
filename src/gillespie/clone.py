@@ -28,7 +28,7 @@ class Clone:
         self.K: int = 0.0
         self.K_min: int = config.Kmin
 
-
+        self.next_mutation: str = ""
         self.cell_type: CloneType
         self.instability: float = 0.0
         self.buildup: float = 0.0

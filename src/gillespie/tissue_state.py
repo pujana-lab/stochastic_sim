@@ -25,6 +25,17 @@ class TissueState:
     def update_pop_map(self) -> None:
         self.pop_map = self.get_pop_map()
 
+    def print_pop_map(self) -> None:
+        """Print the current pop_map as a simple table."""
+        self.update_pop_map()
+        header_type = "clone_type"
+        header_count = "count"
+        max_type = max((len(ct.value) for ct in self.pop_map), default=len(header_type))
+        print(f"{header_type:<{max_type}} | {header_count}")
+        print(f"{'-' * max_type}-+-{'-' * len(header_count)}")
+        for clone_type, count in sorted(self.pop_map.items(), key=lambda item: item[0].value):
+            print(f"{clone_type.value:<{max_type}} | {count}")
+
     def total_population(self) -> int:
         """Get total number of cells across all clones."""
         return sum(clone.N for clone in self.clones.values())
