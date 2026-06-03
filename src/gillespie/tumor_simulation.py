@@ -189,10 +189,12 @@ class TumorSimulation:
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
         if self.config.verbose:
-            print(
-                f"time:{self.t} EVENT: {event.kind.value} KIND: {event.clone_type.value} "
-                f"POPS:{[(key.value, value) for key, value in self.tissue_state.pop_map.items()]}"
-            )
+            print("-------------------")
+            print(f"time:{self.t}" )
+            print(f"EVENT: {event.kind.value}")
+            print(f"KIND: {event.clone_type} ")
+            self.tissue_state.print_pop_map()
+            print("-------------------")
         
         return True
     
