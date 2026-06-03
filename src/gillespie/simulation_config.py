@@ -4,7 +4,7 @@ from typing import Optional
 @dataclass(frozen=True)
 class SimulationConfig:
     # TODO: searar parametros por tipo celular. Cambiar pparametros globales aparte. Intentar imlementar escalado por system size.
-    N0: int = 0
+    N0: int = 10000
     N_immune: int = 100
     N_exhausted: int = 0
     N_mutant: int = 200
@@ -14,13 +14,14 @@ class SimulationConfig:
     mu_Immune: float = 0.003
     mu_Exhausted: float = 0.002
     nu0: float = 0.0002
-    T_max: float = 25
+    T_max: float = 50
     seed: Optional[int] = None
 
-    use_logistic: bool = False
+    use_logistic: bool = True # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA 
     use_logistic_adapted: bool = True
     K0: int = 100
     K_immune: int = 50
+    
     K_mutant: int = 3000
 
     decline: float = 0.0
@@ -45,5 +46,11 @@ class SimulationConfig:
     # ----------------------------------
 
     verbose: bool = True
+
+    scale: bool =True
+    system_size: int = 10000
+    
+    omega = system_size/K0
+    #TODO: implementar una forma de escalar por el system size parametros sin tener que hacerlo a mano (relacionado con task de linea 6)
 
 

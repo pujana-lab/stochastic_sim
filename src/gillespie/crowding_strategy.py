@@ -30,6 +30,8 @@ class AdaptedCrowding(CrowdingStrategy):
             return 1.0
         cfg = self.config
         numerator_N = clone.crowding_numerator(tissue_state)
+        if clone.get_type() == "exhausted":
+            return 1.0
         denom = 1 - clone.death_rate / clone.birth_rate
         if denom <= 0:
             return 0.0
