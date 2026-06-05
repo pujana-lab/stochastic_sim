@@ -10,9 +10,7 @@ def make_clone(birth_rate=0.5, death_rate=0.2, N=10) -> Clone:
     return Clone(
         clone_id=(),
         N=N,
-        birth_rate=birth_rate,
-        death_rate=death_rate,
-        mutation_rate=0.0,
+        config = SimulationConfig(lambda0=birth_rate, mu0=death_rate, )
     )
 
 

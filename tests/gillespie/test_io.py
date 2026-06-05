@@ -1,7 +1,7 @@
 import csv
 import pytest
 from pathlib import Path
-
+from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone import Clone
 from src.gillespie.cloneId import CloneId
 from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv
@@ -68,8 +68,9 @@ def test_save_history_csv_clone_id_encoding(tmp_path):
 # ── save_clones_csv ───────────────────────────────────────────────────────────
 
 def make_clones() -> dict:
-    root = Clone(clone_id=(), N=10, birth_rate=0.5, death_rate=0.2, mutation_rate=0.01)
-    child = Clone(clone_id=(1,), N=3, birth_rate=0.55, death_rate=0.2, mutation_rate=0.01, parent=())
+    config = SimulationConfig()
+    root = Clone(clone_id=(), N=10, config=config)
+    child = Clone(clone_id=(1,), N=3, config=config, parent=())
     return {(): root, (1,): child}
 
 
