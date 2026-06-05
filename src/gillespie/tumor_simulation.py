@@ -29,7 +29,7 @@ class TumorSimulation:
         clones_dict: Dict[CloneId, Clone] = {
             (): self.clone_factory.create_clone(clone_id=(),clone_type="base",N=self.config.N0),
             (-3,): self.clone_factory.create_clone(clone_id=(-3,),clone_type="mutated",N=self.config.N_mutant),
-            (-4,4,4,): self.clone_factory.create_clone_draft(clone_id=(-4,4,4),clone_type="mutated_test",N=0),
+            # (-4,4,4,): self.clone_factory.create_clone(clone_id=(-4,4,4),clone_type="mutated_test",N=0),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
@@ -180,7 +180,6 @@ class TumorSimulation:
         self._advance_all_instability(tau)
         self.t = new_t
         
-        #TODO: HAY QUE COMPROBAR QUE PASA Y COMO GUARDAMOS DATOS. LA SIMULACION SE HACE CADA VEZ MAS LENTA CUANDO PASA EL TIEMPO (se quedo en t=27 avanzando poquisimo tiempo cada vez durante miles de simulaciones)
         event = rate_matrix.choose_event(self.rng.random())
         self._apply_event(event)
         self.tissue_state.update_pop_map()
@@ -197,9 +196,35 @@ class TumorSimulation:
         
         return True
     
+    def _stopping_cond(self) -> bool:
+        """" We will make the system stop if it reaches stability"""
+
+     
+
+        # 2. Extinción total
+        if self.total_population() <= 0:
+            
+            print("total extinction")
+            
+            return True
+                
+        
+        # if self.tissue_state.pop_map["immune"] <= 0:
+
+        #     print(" Complete tumor escape  ")
+        #     return True
+        
+        # if self.tissue_state.pop_map["mutated"] <=0 and self.tissue_state.pop_map["exhausted"]<=0:
+        #     print (" complete tumor control")
+        #     return True
+            
+        
+        #
+       
+        return False
 
     def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], TissueState]:
-        while self.t < self.config.T_max and self.total_population() > 0:
+        while not self._stopping_cond():
             if not self.step():
                 break
         return self.times, self.history, self.tissue_state

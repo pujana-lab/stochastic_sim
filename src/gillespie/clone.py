@@ -35,10 +35,10 @@ class Clone:
         self.mutation_rate: float = 0.0
         self.exhaustion_rate: float = 0.0
 
-        self.K: int = 0.0
+        self.K: int = None
         self.K_min: int = config.Kmin
 
-        self.next_mutation: str = None
+        self.next_mutation: str = ""
         self.instability: float = 0.0
         self.buildup: float = 0.0
         self.d1: float = 0.0
@@ -126,6 +126,7 @@ class ImmuneClone(Clone, clone_type = "immune"):
         self.birth_rate = self.config.lambda_Immune
         self.death_rate = 0.0
         self.exhaustion_rate = self.config.mu_Immune
+        self.K = self.config.K_immune
 
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:

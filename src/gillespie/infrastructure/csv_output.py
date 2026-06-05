@@ -7,11 +7,21 @@ from typing import Dict, List
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 
-#TODO: cambiar para que devuelva correctamente los clones. ahora mismo ignora immune y exhausted y ademas no esta contando bien el numero de clones nuevos (mutaciones) que se crean
+#TODO: HAY QUE REHACER ESTO PARA QUE HAGA MAS USO DE TISSUE STATE Y SU FUNCION SNAPSHOT. Ver que info queremos sacar al csv
 def clone_id_to_str(clone_id: CloneId) -> str:
-    return "root" if len(clone_id) == 0 else ".".join(map(str, clone_id))
+    if len(clone_id) == 0:
+        return "root"   
+    elif clone_id == (-3,):
+        return "mutated_root"
+    elif clone_id == (-1,):
+        return "immune"
+    elif clone_id == (-2,):
+        return "exhausted"
 
-
+    else:
+        return ".".join(map(str, clone_id))
+    
+    
 def save_history_csv(path: Path, times: List[float], history: List[Dict[CloneId, dict]]) -> None:
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
