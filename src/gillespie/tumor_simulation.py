@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 import numpy as np
-
+from src.gillespie.clone_type import CloneType
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
+from src.gillespie.tissue_state import TissueState
 from src.gillespie.event import Event
 from src.gillespie.event_type import EventType
 from src.gillespie.rate_matrix import RateMatrix
@@ -20,14 +21,21 @@ class TumorSimulation:
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
         
-        
-        # AHORA MISMO EL SIM SOLO TIENE HARDCODED INIT CLONE COMO WT, deberia incluir posibilidad de elegir distribuciones de initial conditions
-        self.clones: Dict[CloneId, Clone] = {
+
+        #aqui igual merece mas la pena guardarlo como array simplemente o eso o hacerlo por tipos pero en ese caso 
+        # Initialize clones
+        # clones_dict:Dict[CloneType,Clone]= {}
+        # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
+        clones_dict: Dict[CloneId, Clone] = {
             (): self.clone_factory.create_clone(clone_id=(),clone_type="wild_type",N=self.config.N0),
+            (1,): self.clone_factory.create_clone(clone_id=(1,),clone_type="wild_type",N=1000),
             (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
+        
+        # Encapsulate tissue state
+        self.tissue_state: TissueState = TissueState(clones_dict)
 
         self.times: List[float] = [0.0]
 
@@ -36,28 +44,15 @@ class TumorSimulation:
             if config.use_logistic_adapted
             else SimpleCrowding(config)
         )
-        
-        #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
 
-        self.history: List[Dict[CloneId, dict]] = [self._snapshot()]
+        #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
+        self.popmap: Dict[CloneType,int] =  self.tissue_state.get_pop_map()
+        self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _snapshot(self) -> Dict[CloneId, dict]:
-        total_N = self.total_population()
-        return {
-            cid: {
-                "N": clone.N,
-                "rb": clone.birth_rate_effective(
-                    crowding=self.crowding_strategy.crowding(clone, self.t, total_N)
-                ),
-                "rd": clone.death_rate_effective(),
-            }
-            for cid, clone in self.clones.items()
-        }
-
     def _advance_all_instability(self, dt: float) -> None:
-        for clone in self.clones.values():
+        for clone in self.tissue_state.clones.values():
             if clone.is_alive():
                 clone.advance_instability(dt, self.config.base_instability_buildup)
 
@@ -65,30 +60,28 @@ class TumorSimulation:
         total_N = self.total_population()
         rate_matrix = RateMatrix()
 
-        for cid, clone in self.clones.items():
+        for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
-            crowding_value = self.crowding_strategy.crowding(clone, self.t, total_N)
             
-
-            #Necesito una forma de poder pasar a los calculadores de rb rd rm y re las poblaciones. lo mas sencillo seugramente sea pasarle el diccionario de poblaciones N_C N_I N_W y N_E y luego dentro de clone.py pasarle todo el diccionario y que el elija los valores que necesita. la logica del crowding deberia pasarse a dentro del clone type Class en clone.py y cambiar el valor de total_N para que sea la suma de valores que necesita cada tipo.(por ejemplo el numerador del crowding factor para las wildtyp seria N_W+N_C). entonces el crowding_value se calcula dentro de cada Clase directamente. 
-
-            #Para hacer eso necesito poder agrupar los numeros de poblaciones por el tipo de clon y no por el ID (ahora history va por ID)
-            #ESTO HAY QUE SACARLO 
-            #-----------
-            rb = clone.birth_rate_effective(crowding=crowding_value)
-            rd = clone.death_rate_effective()
+            numerator= clone.crowding_value(self.popmap)
+            
+            crowding_value = self.crowding_strategy.crowding(clone=clone, t=self.t, numerator_N=numerator)
+            
+            # Pass tissue_state to clones so they can access population counts
+            rb = clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value)
+            rd = clone.death_rate_effective(tissue_state=self.tissue_state)
             rm = clone.mutation_rate_effective()
-            re = clone.exhaustion_rate_effective()
-            #-----------
+            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
+            
             if rb > 0:
-                rate_matrix.add_event(Event(EventType.BIRTH, cid, rb))
+                rate_matrix.add_event(Event(kind= EventType.BIRTH, clone_id= cid, rate = rb, clone_type=clone.cell_type))
             if rd > 0:
-                rate_matrix.add_event(Event(EventType.DEATH, cid, rd))
+                rate_matrix.add_event(Event(kind= EventType.DEATH, clone_id= cid, rate = rd, clone_type=clone.cell_type))
             if rm > 0:
-                rate_matrix.add_event(Event(EventType.MUTATION, cid, rm))
+                rate_matrix.add_event(Event(kind= EventType.MUTATION, clone_id= cid, rate = rm, clone_type=clone.cell_type))
             if re > 0:
-                rate_matrix.add_event(Event(EventType.EXHAUSTION,cid,re))
+                rate_matrix.add_event(Event(kind= EventType.EXHAUSTION,clone_id= cid, rate = re, clone_type=clone.cell_type))
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:
@@ -106,12 +99,14 @@ class TumorSimulation:
             N=1,
             parent=clone.clone_id,
         )
-        self.clones[child.clone_id] = child
-    def _induce_exhaustion(self,clone:Clone) -> None:
-        self.clones[(-1,)].kill()
-        self.clones[(-2,)].divide()
+        self.tissue_state.clones[child.clone_id] = child
+    
+    def _induce_exhaustion(self, clone: Clone) -> None:
+        self.tissue_state.clones[(-1,)].kill()
+        self.tissue_state.clones[(-2,)].divide()
+    
     def _apply_event(self, event: Event) -> None:
-        clone = self.clones[event.clone_id]
+        clone = self.tissue_state.clones[event.clone_id]
         if event.kind == EventType.BIRTH:
             clone.divide()
         elif event.kind == EventType.DEATH:
@@ -126,7 +121,7 @@ class TumorSimulation:
     # ── Public API ────────────────────────────────────────────────────────────
 
     def total_population(self) -> int:
-        return sum(clone.N for clone in self.clones.values())
+        return self.tissue_state.total_population()
 
     def step(self) -> bool:
         """Advance by one Gillespie step. Returns False when simulation should stop."""
@@ -144,7 +139,7 @@ class TumorSimulation:
             self._advance_all_instability(tau)
             self.t = self.config.T_max
             self.times.append(self.t)
-            self.history.append(self._snapshot())
+            self.history.append(self.tissue_state.snapshot())
             return False
 
         self._advance_all_instability(tau)
@@ -153,11 +148,11 @@ class TumorSimulation:
         self._apply_event(event)
 
         self.times.append(self.t)
-        self.history.append(self._snapshot())
+        self.history.append(self.tissue_state.snapshot())
         return True
 
-    def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], Dict[CloneId, Clone]]:
+    def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], TissueState]:
         while self.t < self.config.T_max and self.total_population() > 0:
             if not self.step():
                 break
-        return self.times, self.history, self.clones
+        return self.times, self.history, self.tissue_state

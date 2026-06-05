@@ -1,48 +1,65 @@
-from typing import Dict, Optional
+from typing import Optional
 
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.clone import Clone, WildTypeClone,MutatedClone,ImmuneClone,ExhaustedClone
+from src.gillespie.clone import Clone, WildTypeClone, MutatedClone, ImmuneClone, ExhaustedClone
 from src.gillespie.cloneId import CloneId
+
+
 class CloneFactory:
     def __init__(self, config: SimulationConfig):
         self.config = config
 
-    def create_clone(self,clone_id: CloneId, clone_type: str = "wild_type",N: int = 1, parent: Clone | None = None) -> Clone:
+    def create_clone(
+        self, 
+        clone_id: CloneId, 
+        clone_type: str = "wild_type",
+        N: int = 1, 
+        parent: Optional[Clone] = None
+    ) -> Clone:
         if clone_type == "wild_type":
-            x= WildTypeClone(
+            clone = WildTypeClone(
                 clone_id=clone_id,
+                config=self.config,
                 N=N,
-                config = self.config
+                parent=parent
             )
-            x.mutation_rate=self.config.nu0,
-            x.K= self.config.K0,
+            clone.mutation_rate = self.config.nu0
+            clone.K = self.config.K0
+            
         elif clone_type == "mutated":
-            x= MutatedClone(
+            clone = MutatedClone(
                 clone_id=clone_id,
+                config=self.config,
                 N=N,
                 parent=parent,
                 config = self.config
             )
-            x.birth_rate=self.config.lambda0 * (1.0 + self.config.fitness_gain),
-            x.K= self.config.K_mutant,
+            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            clone.K = self.config.K_mutant
+            
         elif clone_type == "immune":
-            x= ImmuneClone(
-                clone_id=(-1),
+            clone = ImmuneClone(
+                clone_id=clone_id,
+                config=self.config,
                 N=N,
                 K= self.config.K_immune,
                 config = self.config
             )
-            x.birth_rate= self.config.lambda_Immune,
-            x.death_rate= 0.0,
-            x.exhaustion_rate= self.config.exhaustion_rate,
+            clone.birth_rate = self.config.lambda_Immune
+            clone.death_rate = 0.0
+            clone.exhaustion_rate = self.config.mu_Immune
+            
         elif clone_type == "exhausted":
-            x= ExhaustedClone(
-                clone_id=(-2),
+            clone = ExhaustedClone(
+                clone_id=clone_id,
+                config=self.config,
                 N=N,
                 config = self.config
             )
-            x.birth_rate=0.0,
-            x.death_rate=self.config.mu_Exhausted,
+            clone.birth_rate = 0.0
+            clone.death_rate = self.config.mu_Exhausted
+            
         else:
             raise ValueError(f"Unknown clone type: {clone_type}")
-        return x
+            
+        return clone
