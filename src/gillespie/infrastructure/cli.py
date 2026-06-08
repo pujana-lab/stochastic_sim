@@ -10,7 +10,7 @@ from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv
 from src.gillespie.tumor_simulation import TumorSimulation
 
-
+# TODO: actualizar con nuevos valores del SimulationConfig
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Run tumor clone Gillespie simulation.")
 
@@ -26,8 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--buildup-0", dest="buildup_0", type=float, default=0.0)
     p.add_argument("--base-instability-buildup", type=float, default=0.0)
 
-    p.add_argument("--mutation-instability-jump", type=float, default=0.05)
-    p.add_argument("--mutation-buildup-gain", type=float, default=0.0001)
+    p.add_argument("--mutation-instability-jump", type=float, default=0.0)
+    p.add_argument("--mutation-buildup-gain", type=float, default=0.0)
 
     p.add_argument("--T-max", dest="T_max", type=float, default=10.0)
     p.add_argument("--seed", type=int, default=None)
@@ -98,23 +98,25 @@ def print_summary(times: List[float], clones: Dict[CloneId, Clone], top_k: int) 
             f"buildup={clone.buildup:.6f}"
         )
 
-
+#TODO: mensaje de arranque y progreso
+#TODO: anyadir trazabilidad
+#TODO: ver que va guardando en memoria. (explota)
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    config = config_from_args(args)
+    config = SimulationConfig()
     sim = TumorSimulation(config=config)
-    times, history, clones = sim.run()
+    times, history, tissue_state = sim.run()
 
-    print_summary(times, clones, args.top)
+    print_summary(times, tissue_state.clones, args.top)
 
     if args.save_history is not None:
         save_history_csv(args.save_history, times, history)
         print(f"\nSaved history to {args.save_history}")
 
     if args.save_clones is not None:
-        save_clones_csv(args.save_clones, clones)
+        save_clones_csv(args.save_clones, tissue_state.clones)
         print(f"Saved clones to {args.save_clones}")
 
 

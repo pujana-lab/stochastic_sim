@@ -1,39 +1,109 @@
-from typing import Dict, Optional
+from typing import Optional
 
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.clone import Clone, WildTypeClone,MutatedClone
+from src.gillespie.clone import Clone, WildTypeClone, MutatedClone, ImmuneClone, ExhaustedClone
 from src.gillespie.cloneId import CloneId
+
+
 class CloneFactory:
     def __init__(self, config: SimulationConfig):
         self.config = config
 
-    def create_clone(self,clone_id: CloneId, clone_type: str = "wild_type", parent: Clone | None = None) -> Clone:
-        if clone_type == "wild_type":
-            x= WildTypeClone(
+#TODO: testear este nuevo metodo y meterlo en vez del otro (mas escalable). Probablemente ni necesitemos factory.
+    def create_clone(
+        self, 
+        clone_id: CloneId, 
+        clone_type: str = "base",
+        N: int = 1, 
+        parent: Optional[Clone] = None
+    ) -> Clone:
+        
+
+        
+        if clone_type == "mutated_test":
+            clone = MutatedClone(
                 clone_id=clone_id,
-                N=self.config.N0,
-                birth_rate=self.config.lambda0,
-                death_rate=self.config.mu0,
-                mutation_rate=self.config.nu0,
-                instability=self.config.instability_0,
-                buildup=self.config.buildup_0,
-                d1=self.config.d1_0,
-                d2=self.config.d2_0,
-                parent=parent
+                config=self.config,
+                N=N,
+                parent=parent,
+                config = self.config
             )
-        elif clone_type == "mutated":
-            x= MutatedClone(
-                clone_id=clone_id,
-                N=self.config.N0,
-                birth_rate=self.config.lambda0,
-                death_rate=self.config.mu0,
-                mutation_rate=self.config.nu0,
-                instability=self.config.instability_0,
-                buildup=self.config.buildup_0,
-                d1=self.config.d1_0,
-                d2=self.config.d2_0,
-                parent=parent
-            )
-        else:
+
+            clone.next_mutation = "mutated"
+            clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
+            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            clone.death_rate = 0
+            clone.K = self.config.K_mutant
+            return clone
+       
+        elif clone_type not in Clone._registry:
             raise ValueError(f"Unknown clone type: {clone_type}")
-        return x
+    
+        clone_class = Clone._registry[clone_type]
+        clone = clone_class(
+            clone_id=clone_id,
+            config=self.config,
+            N=N,
+            parent=parent
+        )
+        return clone
+
+    # def create_clone(
+    #     self, 
+    #     clone_id: CloneId, 
+    #     clone_type: str = "base",
+    #     N: int = 1, 
+    #     parent: Optional[Clone] = None
+    # ) -> Clone:
+    #     if clone_type == "base":
+    #         clone = WildTypeClone(
+    #             clone_id=clone_id,
+    #             config=self.config,
+    #             N=N,
+    #             parent=parent
+    #         )
+            
+            
+    #     elif clone_type == "mutated":
+    #         clone = MutatedClone(
+    #             clone_id=clone_id,
+    #             config=self.config,
+    #             N=N,
+    #             parent=parent
+    #         )
+            
+
+    #     elif clone_type == "mutated_test":
+    #         clone = MutatedClone(
+    #             clone_id=clone_id,
+    #             config=self.config,
+    #             N=N,
+    #             parent=parent
+    #         )
+
+    #         clone.next_mutation = "mutated"
+    #         clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
+    #         clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+    #         clone.death_rate = 0
+    #         clone.K = self.config.K_mutant
+            
+    #     elif clone_type == "immune":
+    #         clone = ImmuneClone(
+    #             clone_id=clone_id,
+    #             config=self.config,
+    #             N=N,
+    #             parent=parent
+    #         )
+            
+    #     elif clone_type == "exhausted":
+    #         clone = ExhaustedClone(
+    #             clone_id=clone_id,
+    #             config=self.config,
+    #             N=N,
+    #             parent=parent
+    #         )
+            
+    #     else:
+    #         raise ValueError(f"Unknown clone type: {clone_type}")
+            
+    #     return clone
