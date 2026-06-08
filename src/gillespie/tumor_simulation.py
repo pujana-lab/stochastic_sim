@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from src.gillespie.clone_type import CloneType
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.tissue_state import TissueState
@@ -20,22 +19,24 @@ class TumorSimulation:
         self.rng = np.random.default_rng(config.seed)
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
+        print("arrancando con parametros:")
+        print(config)
         
-
         #aqui igual merece mas la pena guardarlo como array simplemente o eso o hacerlo por tipos pero en ese caso 
         # Initialize clones
         # clones_dict:Dict[CloneType,Clone]= {}
         # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
         clones_dict: Dict[CloneId, Clone] = {
-            (): self.clone_factory.create_clone(clone_id=(),clone_type="wild_type",N=self.config.N0),
-            (1,): self.clone_factory.create_clone(clone_id=(1,),clone_type="wild_type",N=1000),
-            (0,): self.clone_factory.create_clone(clone_id=(0,),clone_type="mutated",N=self.config.N_mutant),
+            (): self.clone_factory.create_clone(clone_id=(),clone_type="base",N=self.config.N0),
+            (-3,): self.clone_factory.create_clone(clone_id=(-3,),clone_type="mutated",N=self.config.N_mutant),
+            # (-4,4,4,): self.clone_factory.create_clone(clone_id=(-4,4,4),clone_type="mutated_test",N=0),
             (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
             (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
         }
         
+
         # Encapsulate tissue state
-        self.tissue_state: TissueState = TissueState(clones_dict)
+        self.tissue_state: TissueState = TissueState(clones=clones_dict)
 
         self.times: List[float] = [0.0]
 
@@ -46,8 +47,24 @@ class TumorSimulation:
         )
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
-        self.popmap: Dict[CloneType,int] =  self.tissue_state.get_pop_map()
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
+
+    def create_clone(
+        self,
+        clone_id: CloneId,
+        clone_type: str = "base",
+        N: int = 1,
+        parent: Optional[Clone] = None,
+    ) -> Clone:
+        clone = self.clone_factory.create_clone(
+            clone_id=clone_id,
+            clone_type=clone_type,
+            N=N,
+            parent=parent,
+        )
+        self.tissue_state.clones[clone.clone_id] = clone
+        self.tissue_state.update_pop_map()
+        return clone
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
@@ -57,31 +74,44 @@ class TumorSimulation:
                 clone.advance_instability(dt, self.config.base_instability_buildup)
 
     def _build_rate_matrix(self) -> RateMatrix:
-        total_N = self.total_population()
+        self.tissue_state.update_pop_map()
         rate_matrix = RateMatrix()
+        type_rates: Dict[str, tuple[float, float, float, float]] = {}
 
         for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
-            
-            numerator= clone.crowding_value(self.popmap)
-            
-            crowding_value = self.crowding_strategy.crowding(clone=clone, t=self.t, numerator_N=numerator)
-            
-            # Pass tissue_state to clones so they can access population counts
-            rb = clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value)
-            rd = clone.death_rate_effective(tissue_state=self.tissue_state)
-            rm = clone.mutation_rate_effective()
-            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
-            
+
+            clone_type = clone.get_type()
+            if clone_type not in type_rates:
+                crowding_value = self.crowding_strategy.crowding(
+                    clone=clone, t=self.t, tissue_state=self.tissue_state
+                )
+                type_rates[clone_type] = (
+                    clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value),
+                    clone.death_rate_effective(tissue_state=self.tissue_state),
+                    clone.mutation_rate_effective(tissue_state=self.tissue_state),
+                    clone.exhaustion_rate_effective(tissue_state=self.tissue_state),
+                )
+
+            rb, rd, rm, re = type_rates[clone_type]
+
             if rb > 0:
-                rate_matrix.add_event(Event(kind= EventType.BIRTH, clone_id= cid, rate = rb, clone_type=clone.cell_type))
+                rate_matrix.add_event(
+                    Event(kind=EventType.BIRTH, clone_id=cid, rate=rb, clone_type=clone.get_type())
+                )
             if rd > 0:
-                rate_matrix.add_event(Event(kind= EventType.DEATH, clone_id= cid, rate = rd, clone_type=clone.cell_type))
+                rate_matrix.add_event(
+                    Event(kind=EventType.DEATH, clone_id=cid, rate=rd, clone_type=clone.get_type())
+                )
             if rm > 0:
-                rate_matrix.add_event(Event(kind= EventType.MUTATION, clone_id= cid, rate = rm, clone_type=clone.cell_type))
+                rate_matrix.add_event(
+                    Event(kind=EventType.MUTATION, clone_id=cid, rate=rm, clone_type=clone.get_type())
+                )
             if re > 0:
-                rate_matrix.add_event(Event(kind= EventType.EXHAUSTION,clone_id= cid, rate = re, clone_type=clone.cell_type))
+                rate_matrix.add_event(
+                    Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.get_type())
+                )
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:
@@ -92,17 +122,21 @@ class TumorSimulation:
     # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
-        clone.kill()
-        child = self.clone_factory.create_clone(
+        
+        # Validate that the next mutation type exists in CloneType
+        assert clone.next_mutation is not "", "Clone is not supposed to be mutating"
+        
+        
+        self.create_clone(
             clone_id=clone.next_child_id(),
-            clone_type="mutated",
-            N=1,
+            clone_type=clone.next_mutation,
+            N=2,
             parent=clone.clone_id,
         )
-        self.tissue_state.clones[child.clone_id] = child
+        clone.kill()
     
     def _induce_exhaustion(self, clone: Clone) -> None:
-        self.tissue_state.clones[(-1,)].kill()
+        self.tissue_state.clones[clone.clone_id].kill()
         self.tissue_state.clones[(-2,)].divide()
     
     def _apply_event(self, event: Event) -> None:
@@ -144,15 +178,52 @@ class TumorSimulation:
 
         self._advance_all_instability(tau)
         self.t = new_t
+        
         event = rate_matrix.choose_event(self.rng.random())
         self._apply_event(event)
+        self.tissue_state.update_pop_map()
 
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
+        if self.config.verbose:
+            print("-------------------")
+            print(f"time:{self.t}" )
+            print(f"EVENT: {event.kind.value}")
+            print(f"KIND: {event.clone_type} ")
+            self.tissue_state.print_pop_map()
+            print("-------------------")
+        
         return True
+    
+    def _stopping_cond(self) -> bool:
+        """" We will make the system stop if it reaches stability"""
+
+     
+
+        # 2. Extinción total
+        if self.total_population() <= 0:
+            
+            print("total extinction")
+            
+            return True
+                
+        
+        # if self.tissue_state.pop_map["immune"] <= 0:
+
+        #     print(" Complete tumor escape  ")
+        #     return True
+        
+        # if self.tissue_state.pop_map["mutated"] <=0 and self.tissue_state.pop_map["exhausted"]<=0:
+        #     print (" complete tumor control")
+        #     return True
+            
+        
+        #
+       
+        return False
 
     def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], TissueState]:
-        while self.t < self.config.T_max and self.total_population() > 0:
+        while not self._stopping_cond():
             if not self.step():
                 break
         return self.times, self.history, self.tissue_state

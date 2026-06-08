@@ -1,232 +1,217 @@
-# moran
-Basic Moran Process Simulator
+# Tumor Gillespie Simulator
 
-**Authors:**
-- Luis Palomero <lpalomerol@gmail.com>
-- Victor Manso <victor.mansov@gmail.com>
+Simulación de clones tumorales mediante un algoritmo de Gillespie con eventos de nacimiento, muerte, mutación y agotamiento.
 
----
+## Visión general
 
-## ¿Qué es el Proceso de Moran?
+Este proyecto modela un tejido con cuatro tipos de clones:
 
-El [Proceso de Moran](https://en.wikipedia.org/wiki/Moran_process) es un modelo estocástico de evolución de poblaciones finitas. En cada paso:
+- `base` (células sanas o normales)
+- `mutated` (células tumorales)
+- `immune` (células inmunes)
+- `exhausted` (células agotadas)
 
-1. Un individuo es seleccionado para **reproducirse** (proporcional al fitness)
-2. Un individuo es seleccionado para **morir**
-3. El tamaño total de la población se mantiene constante
+Cada clon tiene tasas base de nacimiento, muerte, mutación y agotamiento. Las tasas efectivas se calculan en función del estado global del tejido (`TissueState`) y de interacciones entre los tipos celulares.
 
-El proceso termina cuando un grupo fija toda la población (`n = 0` para el resto).
+## Matemáticas del modelo
 
-### Mutaciones
+### Eventos del modelo
 
-El simulador soporta un motor de mutaciones que actúa en paralelo al proceso de evolución. En cada paso, el motor de mutaciones puede transformar un individuo de un grupo existente en un individuo de un nuevo grupo con un fitness distinto. El evento queda registrado en la columna `events` del tracking.
+El simulador considera los siguientes eventos de Gillespie para cada clon vivo:
 
-### Linaje poligénico ⚠️ _planificado_
+- `BIRTH`: división celular
+- `DEATH`: muerte celular
+- `MUTATION`: creación de un clon mutado hijo
+- `EXHAUSTION`: transformación entre clones inmune/exhaustos
 
-El objetivo a medio plazo es soportar un **linaje poligénico básico**: múltiples motores de mutación simultáneos que permitan construir cadenas de origen entre grupos (`weak → mutant_A → mutant_B`). Esto permitirá reconstruir el árbol genealógico de los grupos a partir del tracking.
+### Tasas efectivas por clon
 
-El diseño previsto es:
+Para un clon de tipo `i` con población total `N_i` en el estado actual:
+
+- tasa de nacimiento:
+  $$ r^B_i = \lambda_i \, N_i \, C_i(t) $$
+- tasa de muerte:
+  $$ r^D_i = \mu_i \, N_i + I_i(t) $$
+- tasa de mutación:
+  $$ r^M_i = \nu_i \, N_i \, (1 + \text{instability}_i) $$
+- tasa de agotamiento:
+  $$ r^E_i = \epsilon_i \, N_i $$
+
+Aquí `C_i(t)` es el factor de `crowding` y `I_i(t)` es un término de interacción extra dependiente de otros tipos celulares.
+
+#### Crowding
+
+Las dos estrategias de crowding implementadas son:
+
+- `SimpleCrowding`
+- `AdaptedCrowding`
+
+Ambas usan la forma general:
+
+$$ C_i(t) = \max\left(0, 1 - \frac{N_{crowd}}{K_i(t)} \right) $$
+
+con:
+
+- `N_{crowd}`: población competitiva para ese clon
+- `K_i(t)`: capacidad de carga efectiva en tiempo `t`
+
+Para `SimpleCrowding`:
+
+$$ K_i(t) = \max(K_{min}, K_i - decline \cdot t) $$
+
+Para `AdaptedCrowding`:
+
+$$ K_i(t) = \max\left(K_{min}, \frac{K_i}{1 - \mu_i / \lambda_i} - decline \cdot t \right) $$
+
+### Interacciones específicas
+
+#### `MutatedClone`
+
+La muerte efectiva incluye un término inmune:
+
+$$ r^D_{mut} = \mu_{mut} N_{mut} + N_{mut} N_{immune} \theta_I $$
+
+#### `ImmuneClone`
+
+- nacimiento activo:
+  $$ r^B_{immune} = \lambda_{immune} N_{immune} C_{immune} + N_{immune} N_{mut} \beta $$
+- agotamiento dependiente del tumor:
+  $$ r^E_{immune} = \epsilon_{immune} N_{immune} N_{mut} $$
+
+#### `ExhaustedClone`
+
+- no se divide:
+  $$ r^B_{exh} = 0 $$
+
+### Evolución de la inestabilidad
+
+Cada clon vivo acumula inestabilidad en el tiempo:
+
+$$ \mathit{instability}_i(t + \Delta t) = \mathit{instability}_i(t) + (\mathit{base\_instability\_buildup} + \mathit{buildup}_i) \cdot \Delta t $$
+
+Esto afecta la tasa de mutación en `MutatedClone` y otros eventos si se extiende el modelo.
+
+### Gillespie paso a paso
+
+En cada paso de la simulación:
+
+1. Actualizar `pop_map` en `TissueState`
+2. Construir la matriz de tasas de eventos (`RateMatrix`)
+3. Sumar la tasa total
+   $$ R = \sum_{j} r_j $$
+4. Muestrear el tiempo hasta el próximo evento:
+   $$ \tau = -\frac{1}{R} \, \ln(u), \quad u \sim U(0,1) $$
+5. Seleccionar un evento proporcional a su tasa
+6. Aplicar el evento al clon elegido
+7. Actualizar el tiempo y guardar un snapshot del estado
+
+La simulación termina cuando se alcanza `T_max` o no hay más eventos posibles.
+
+## Arquitectura del código
+
+### `src/gillespie/simulation_config.py`
+
+Define los parámetros globales del modelo:
+
+- poblaciones iniciales: `N0`, `N_mutant`, `N_immune`, `N_exhausted`
+- tasas base: `lambda0`, `lambda_Immune`, `mu0`, `mu_Immune`, `mu_Exhausted`, `nu0`
+- parámetros de interacción: `theta_I`, `beta`
+- capacidades: `K0`, `K_immune`, `K_mutant`, `decline`, `Kmin`
+- tiempo máximo: `T_max`
+- parámetros de inestabilidad y fitness
+
+### `src/gillespie/clone_factory.py`
+
+Construye los clones iniciales y asigna sus parámetros base según el tipo:
+
+- `base` → `WildTypeClone`
+- `mutated` → `MutatedClone`
+- `immune` → `ImmuneClone`
+- `exhausted` → `ExhaustedClone`
+
+### `src/gillespie/clone.py`
+
+Define la clase base `Clone` y subclases especializadas.
+Cada clon implementa métodos de tasa efectiva que reciben el `TissueState` completo y pueden leer interacciones globales desde `self.config`.
+
+### `src/gillespie/tissue_state.py`
+
+Encapsula el estado actual del tejido:
+
+- `clones: Dict[CloneId, Clone]`
+- `pop_map: Dict[CloneType, int]`
+- `snapshot()` para historial
+- consultas por tipo de clon
+
+### `src/gillespie/crowding_strategy.py`
+
+Implementa las estrategias de crowding que modifican la tasa de nacimiento.
+
+### `src/gillespie/tumor_simulation.py`
+
+Controla la simulación completa:
+
+- instancia `CloneFactory` y crea el `TissueState`
+- construye la matriz de eventos
+- muestrea tiempos con la fórmula de Gillespie
+- aplica eventos y guarda el historial
+
+## Uso sencillo
 
 ```python
-simulator = Simulator(
-    population=population,
-    evol_engine=engine,
-    mutation_engines=[
-        MutationEngineBernoulli(p=0.05, victim='weak',     new_group='mutant_A', new_fitness=3.0),
-        MutationEngineBernoulli(p=0.02, victim='mutant_A', new_group='mutant_B', new_fitness=6.0),
-    ]
+from src.gillespie.simulation_config import SimulationConfig
+from src.gillespie.tumor_simulation import TumorSimulation
+
+config = SimulationConfig(
+    N0=100,
+    N_mutant=5,
+    N_immune=20,
+    N_exhausted=0,
+    lambda0=0.5,
+    mu0=0.2,
+    nu0=0.01,
+    theta_I=0.001,
+    beta=0.001,
+    K0=1000,
+    K_mutant=1000,
+    K_immune=500,
+    use_logistic=True,
+    use_logistic_adapted=True,
+    T_max=1000,
+)
+
+sim = TumorSimulation(config)
+results = sim.run()
+```
+
+## Reescalado de parámetros
+
+Si quieres adaptar el modelo al tamaño del sistema, prepara la configuración antes de crear `TumorSimulation`.
+
+```python
+scaled_config = SimulationConfig(
+    N0=int(base_N0 * scale),
+    K0=int(base_K0 * scale),
+    theta_I=base_theta_I / scale,
+    beta=base_beta / scale,
+    # ... otros parámetros según tu estrategia de escalado
 )
 ```
 
----
+## Consideraciones
 
-## Estructura del Proyecto
-
-```
-moran/
-├── src/
-│   ├── population.py                          # SubPopulation + Population
-│   ├── evolution_engine_interface.py          # Interfaz abstracta EvolutionEngineInterface
-│   ├── evolution_engine_deterministic.py      # Motor determinista (selección por fitness × n)
-│   ├── evolution_engine_bernoulli.py          # Motor probabilístico (selección proporcional al fitness)
-│   ├── mutation_engine_interface.py           # Interfaz abstracta MutationEngineInterface
-│   ├── mutation_engine_disabled.py            # Motor sin mutaciones (por defecto)
-│   ├── mutation_engine_deterministic.py       # Mutación cada N pasos
-│   ├── mutation_engine_bernoulli.py           # Mutación con probabilidad p
-│   └── simulator.py                           # Simulator: orquesta evolución + mutación
-├── tests/
-│   ├── test_population_kata_01_minimal_builder.py
-│   ├── test_population_kata_02_basic_fitness.py
-│   ├── test_population_kata_03_deterministic_evolution.py
-│   ├── test_population_kata_04_simulation_tracking.py
-│   ├── test_population_kata_05_refactor_determinic_evolution.py
-│   ├── test_population_kata_06_bernoulli_evolution_engine.py
-│   ├── test_population_kata_07_deterministic_mutation_engine.py
-│   └── test_population_kata_08_bernoulli_mutation_engine.py
-├── configs/
-│   ├── deterministic.yaml                     # Evolución determinista, sin mutación
-│   ├── deterministic_mutation.yaml            # Evolución Bernoulli + mutación determinista
-│   └── bernoulli_mutation.yaml                # Evolución Bernoulli + mutación Bernoulli
-├── main.py
-├── Makefile
-└── requirements.txt
-```
-
-### Responsabilidades por módulo
-
-| Módulo | Clase | Responsabilidad |
-|--------|-------|-----------------|
-| `population.py` | `SubPopulation` | Dataclass con `name`, `n` y `fitness` de un subgrupo. |
-| `population.py` | `Population` | Contiene un dict de `SubPopulation`. Gestiona `individuals` y expone `append_individual` / `remove_individual`. |
-| `evolution_engine_interface.py` | `EvolutionEngineInterface` | Contrato abstracto: `get_reproductor_group()` y `get_victim_group()`. |
-| `evolution_engine_deterministic.py` | `EvolutionEngineDeterministic` | Selecciona reproductor (`max fitness × n`) y víctima (`min fitness × n`). Devuelve `None` si la población está fijada. |
-| `evolution_engine_bernoulli.py` | `EvolutionEngineBernoulli` | Selecciona reproductor y víctima de forma probabilística proporcional al fitness. Acepta `seed`. |
-| `mutation_engine_interface.py` | `MutationEngineInterface` | Contrato abstracto: `should_mutate(step)` y `get_mutation(population)`. |
-| `mutation_engine_disabled.py` | `MutationEngineDisabled` | Implementación nula: nunca muta. Usado por defecto cuando no se configura mutación. |
-| `mutation_engine_deterministic.py` | `MutationEngineDeterministic` | Muta cada `every_n_steps` pasos de forma determinista. |
-| `mutation_engine_bernoulli.py` | `MutationEngineBernoulli` | Muta con probabilidad `p` en cada paso. Acepta `seed`. |
-| `simulator.py` | `Simulator` | Orquesta pasos con `run()`. Aplica evolución y mutación. Guarda histórico en `tracking` con columna `events`. |
-
----
-
-## Instalación
-
-```bash
-pip install -r requirements.txt
-```
-
-Dependencias:
-```
-pytest>=6.2.0
-pytest-cov>=2.12.0
-pandas>=1.3.0
-pyyaml>=6.0
-openpyxl>=3.0.0
-```
-
----
-
-## Uso
-
-### Desde CLI
-
-```bash
-python main.py --config configs/deterministic.yaml
-```
-
-O usando el `Makefile`:
-
-```bash
-make run-deterministic           # evolución determinista, sin mutación
-make run-deterministic-mutation  # evolución Bernoulli + mutación determinista
-make run-bernoulli-mutation      # evolución Bernoulli + mutación Bernoulli
-make run-all                     # los tres escenarios en secuencia
-```
-
-### Estructura del `config.yaml`
-
-```yaml
-populations:
-  dominant:
-    n: 60
-    fitness: 2.0
-  weak:
-    n: 40
-    fitness: 1.0
-
-steps: 200
-
-engine:
-  type: bernoulli   # deterministic | bernoulli
-  seed: 42
-
-mutation:           # opcional — si se omite, no hay mutaciones
-  type: bernoulli   # deterministic | bernoulli
-  p: 0.1            # solo para bernoulli
-  every_n_steps: 10 # solo para deterministic
-  seed: 42          # solo para bernoulli
-  victim_group: weak
-  new_group_name: mutated
-  new_fitness: 5.0
-
-output: results.xlsx
-```
-
-### Desde Python
-
-```python
-from src.population import Population, SubPopulation
-from src.evolution_engine_bernoulli import EvolutionEngineBernoulli
-from src.mutation_engine_deterministic import MutationEngineDeterministic
-from src.simulator import Simulator
-
-population = Population({
-    'dominant': SubPopulation('dominant', n=60, fitness=2.0),
-    'weak':     SubPopulation('weak',     n=40, fitness=1.0),
-})
-
-simulator = Simulator(
-    population=population,
-    evol_engine=EvolutionEngineBernoulli(seed=42),
-    mutation_engine=MutationEngineDeterministic(
-        every_n_steps=10,
-        victim_group='weak',
-        new_group_name='mutated',
-        new_fitness=5.0,
-    ),
-)
-
-for _ in range(200):
-    simulator.run()
-
-df = simulator.get_tracking_summary_df()
-df.to_excel('results.xlsx', index=False)
-```
-
----
+- `TissueState` contiene el estado del tejido; no debe mezclar lógica de simulación.
+- El cálculo de tasas y eventos debe realizarse en `TumorSimulation`.
+- Si clones del mismo tipo comparten tasas efectivas, conviene calcularlas una vez por tipo en `_build_rate_matrix()`.
 
 ## Testing
 
-El proyecto sigue **TDD** con una nomenclatura de kata incremental:
-
 ```bash
-make test        # todos los tests
-make test-cov    # con cobertura HTML
+python -m pytest tests/gillespie
 ```
 
-### Katas
+O:
 
-| Kata | Fichero | Contenido |
-|------|---------|-----------|
-| 01 | `test_population_kata_01_minimal_builder.py` | Construcción básica de `Population` sin fitness |
-| 02 | `test_population_kata_02_basic_fitness.py` | `SubPopulation` con fitness en el constructor |
-| 03 | `test_population_kata_03_deterministic_evolution.py` | Motor determinista: reproductor y víctima |
-| 04 | `test_population_kata_04_simulation_tracking.py` | `Simulator`: tracking y summary DataFrame |
-| 05 | `test_population_kata_05_refactor_determinic_evolution.py` | Refactor "tell, don't ask" |
-| 06 | `test_population_kata_06_bernoulli_evolution_engine.py` | Motor Bernoulli probabilístico |
-| 07 | `test_population_kata_07_deterministic_mutation_engine.py` | Motor mutación determinista + columna `events` |
-| 08 | `test_population_kata_08_bernoulli_mutation_engine.py` | Motor mutación Bernoulli |
-| 09 | _pendiente_ | Lista de `mutation_engines` simultáneos |
-| 10 | _pendiente_ | Columna `lineage` en tracking |
-| 11 | _pendiente_ | `get_lineage_df()`: árbol completo de grupos |
-
----
-
-## Roadmap
-
-### Próximas katas: linaje poligénico
-
-El objetivo es construir un **linaje poligénico básico** a partir del tracking de mutaciones. El diseño se basa en linaje de **grupos** (no de individuos), que es suficiente para el modelo y manejable en memoria.
-
-| Kata | Objetivo |
-|------|----------|
-| 09 | `Simulator` acepta `mutation_engines: list` en lugar de uno solo |
-| 10 | `events` registra `origin → new_group` por cada mutación ocurrida en el paso |
-| 11 | `get_lineage_df()` devuelve el árbol de origen de cada grupo con su paso de aparición |
-
----
-
-## Desarrollo
-
-Este repositorio se construye siguiendo **TDD**: las estructuras de datos y funciones se desarrollan de manera incremental, asegurando que cada componente pase sus pruebas antes de avanzar al siguiente.
-
+```bash
+make test
+```

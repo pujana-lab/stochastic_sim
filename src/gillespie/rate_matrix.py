@@ -22,7 +22,8 @@ class RateMatrix:
         if self.total_rate is None:
             self.total_rate = sum(event.rate for event in self.events)
         return self.total_rate
-        
+    
+    #TODO: (LONG TERM) implementar tau leap.
     def get_reaction_number_poisson(self, tau: float) -> np.ndarray:
         events = self.events
         rates = np.array([event.rate for event in events], dtype=float)
