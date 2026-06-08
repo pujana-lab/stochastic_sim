@@ -25,8 +25,7 @@ class CloneFactory:
                 clone_id=clone_id,
                 config=self.config,
                 N=N,
-                parent=parent,
-                config = self.config
+                parent=parent
             )
 
             clone.next_mutation = "mutated"
