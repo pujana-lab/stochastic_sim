@@ -119,8 +119,7 @@ class TumorSimulation:
             raise ValueError("Total rate must be positive.")
         return -np.log(self.rng.random()) / total_rate
 
-    # TODO: Make it so that Clone have attribute dictating into what type it mutates: Right now all mutate into type mutated, but we could add levels (TP53 defective mutate into brca defective and so on)
-    # TODO: Add tests for mutation and exhaustion events, and for the overall step logic.
+    # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
     def _introduce_mutation(self, clone: Clone) -> None:
         assert clone.is_alive(), "Cannot mutate a dead clone."
         
