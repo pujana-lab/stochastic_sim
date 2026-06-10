@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
+from src.gillespie.event import Event
 
 #TODO: HAY QUE REHACER ESTO PARA QUE HAGA MAS USO DE TISSUE STATE Y SU FUNCION SNAPSHOT. Ver que info queremos sacar al csv
 def clone_id_to_str(clone_id: CloneId) -> str:
@@ -53,3 +54,37 @@ def save_clones_csv(path: Path, clones: Dict[CloneId, Clone]) -> None:
                 clone.d2,
                 clone.children_count,
             ])
+
+
+def save_debug_history_csv(
+    path: Path,
+    times: List[float],
+    history: List[Dict[CloneId, dict]],
+    events: List[Optional[Event]],
+) -> None:
+    with path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "time", "clone_id", "Type", "N",
+            "rb", "rd", "rm", "re",
+            "instability", "buildup",
+            "event_kind", "event_clone_type",
+        ])
+        for t, snap, evt in zip(times, history, events):
+            event_kind = evt.kind.value if evt is not None else "none"
+            event_clone_type = evt.clone_type if evt is not None else "none"
+            for cid, values in snap.items():
+                writer.writerow([
+                    t,
+                    clone_id_to_str(cid),
+                    values.get("Type", ""),
+                    values["N"],
+                    values["rb"],
+                    values["rd"],
+                    values.get("rm", ""),
+                    values.get("re", ""),
+                    values.get("instability", ""),
+                    values.get("buildup", ""),
+                    event_kind,
+                    event_clone_type,
+                ])

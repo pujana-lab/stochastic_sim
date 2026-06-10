@@ -30,7 +30,8 @@ gillespie-homeostasis:
 	  --N0 50 \
 	  --lambda0 0.25 --mu0 0.25 --nu0 0.00 \
 	  --T-max 20 --seed 42 \
-	  --save-history results_gillespie_homeostasis.csv
+	  --save-history results_gillespie_homeostasis.csv \
+	  --save-debug results_gillespie_homeostasis_debug.csv
 
 # Scenario 2: tumour growth with genomic instability and clonal evolution.
 # lambda > mu drives net growth; nu0 > 0 generates mutant subclones that
@@ -46,6 +47,7 @@ gillespie-tumour-growth:
 	  --T-max 30 --seed 7 \
 	  --save-history results_gillespie_tumour_growth.csv \
 	  --save-clones  results_gillespie_tumour_growth_clones.csv \
+	  --save-debug results_gillespie_tumour_growth_debug.csv \
 	  --top 15
 
 # Scenario 3: logistic crowding — tumour growth with carrying capacity K0.
@@ -64,6 +66,7 @@ gillespie-crowding:
 	  --T-max 30 --seed 7 \
 	  --save-history results_gillespie_crowding.csv \
 	  --save-clones  results_gillespie_crowding_clones.csv \
+	  --save-debug results_gillespie_crowding_debug.csv \
 	  --top 15
 
 gillespie-all:

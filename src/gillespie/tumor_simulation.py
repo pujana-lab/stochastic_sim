@@ -48,6 +48,7 @@ class TumorSimulation:
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
+        self.events: List[Optional[Event]] = [None]
 
     def create_clone(
         self,
@@ -185,6 +186,7 @@ class TumorSimulation:
 
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
+        self.events.append(event)
         if self.config.verbose:
             print("-------------------")
             print(f"time:{self.t}" )

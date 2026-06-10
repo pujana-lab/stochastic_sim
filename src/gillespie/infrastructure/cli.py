@@ -7,7 +7,7 @@ from typing import Dict, List
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv
+from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv, save_debug_history_csv
 from src.gillespie.tumor_simulation import TumorSimulation
 
 # TODO: actualizar con nuevos valores del SimulationConfig
@@ -42,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--save-history", type=Path, default=Path("./history.csv"), help="Write long-format history CSV.")
     p.add_argument("--save-clones", type=Path, default=None, help="Write final clone states CSV.")
+    p.add_argument("--save-debug", type=Path, default=None, help="Write full debug trace CSV (all fields + event).")
     p.add_argument("--top", type=int, default=10, help="How many largest final clones to print.")
 
     return p
@@ -118,6 +119,10 @@ def main() -> None:
     if args.save_clones is not None:
         save_clones_csv(args.save_clones, tissue_state.clones)
         print(f"Saved clones to {args.save_clones}")
+
+    if args.save_debug is not None:
+        save_debug_history_csv(args.save_debug, times, history, sim._events)
+        print(f"Saved debug trace to {args.save_debug}")
 
 
 if __name__ == "__main__":
