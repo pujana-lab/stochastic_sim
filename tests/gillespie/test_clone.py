@@ -2,6 +2,7 @@ import pytest
 from src.gillespie.clone import Clone
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone_factory import CloneFactory
+from src.gillespie.tissue_state import TissueState
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 def make_clone(**kwargs) -> Clone:
@@ -12,6 +13,9 @@ def make_clone(**kwargs) -> Clone:
         death_rate=0.2,
         mutation_rate=0.01,
         instability=0.0,
+        buildup=0.0,
+        d1=0.0,
+        d2=0.0,
     )
     defaults.update(kwargs)
     
@@ -20,7 +24,13 @@ def make_clone(**kwargs) -> Clone:
         mu0=defaults["death_rate"], 
         nu0=defaults["mutation_rate"]
     )
-    return Clone(clone_id=defaults["clone_id"], N=defaults["N"], config=config)
+    clone = Clone(clone_id=defaults["clone_id"], N=defaults["N"], config=config)
+    for attr in ("instability", "buildup", "d1", "d2"):
+        setattr(clone, attr, defaults[attr])
+    return clone
+
+def make_tissue_state(clone: Clone) -> TissueState:
+    return TissueState(clones={clone.clone_id: clone})
 
 def make_clone_factory():
     config = SimulationConfig(
@@ -68,27 +78,32 @@ def test_kill_does_not_go_below_zero():
     assert c.N == 0
 
 
-# # ── effective rates ───────────────────────────────────────────────────────────
-#TODO: arreglar tests
+# ── effective rates ───────────────────────────────────────────────────────────
+
 def test_birth_rate_effective_proportional_to_N():
     c = make_clone(birth_rate=0.5, N=10)
-    # crowding=1 → effective = 0.5 * 10 * 1
-    assert c.birth_rate_effective(tissue_state=self.tissue_state, crowding=200) == pytest.approx(5.0)
+    ts = make_tissue_state(c)
+    # effective = birth_rate * N * crowding = 0.5 * 10 * 1
+    assert c.birth_rate_effective(tissue_state=ts, crowding=1) == pytest.approx(5.0)
 
 def test_birth_rate_effective_zero_crowding():
     c = make_clone(birth_rate=0.5, N=10)
-    # crowding=0 → effective = 0.5 * 10 * 0
-    assert c.birth_rate_effective(tissue_state=self.tissue_state, crowding=200) == pytest.approx(0.0)
+    ts = make_tissue_state(c)
+    # effective = birth_rate * N * 0
+    assert c.birth_rate_effective(tissue_state=ts, crowding=0) == pytest.approx(0.0)
 
 def test_death_rate_effective_proportional_to_N():
     c = make_clone(death_rate=0.2, N=10)
-    # effective = 0.2 * 10
-    assert c.death_rate_effective() == pytest.approx(2.0)
+    ts = make_tissue_state(c)
+    # effective = death_rate * N = 0.2 * 10
+    assert c.death_rate_effective(tissue_state=ts) == pytest.approx(2.0)
 
-def test_mutation_rate_effective_does_not_use_multiplier():
+def test_mutation_rate_effective_scales_with_N_and_multiplier():
     c = make_clone(mutation_rate=0.01, instability=1.0, N=10)
-    # multiplier is the provided
-    assert c.mutation_rate_effective() == 0.01
+    c.mutation_rate = 0.01
+    ts = make_tissue_state(c)
+    # effective = mutation_rate * N * (1 + instability) = 0.01 * 10 * 2.0
+    assert c.mutation_rate_effective(tissue_state=ts) == pytest.approx(0.2)
 
 
 # # ── mutation_multiplier ───────────────────────────────────────────────────────
@@ -138,11 +153,11 @@ def test_advance_instability_uses_base_buildup():
 def test_clone_factory_create_clone():
     factory = make_clone_factory()
     clone_id = (1,)
-    clone = factory.create_clone(clone_id,clone_type="mutated")
+    clone = factory.create_clone(clone_id, clone_type="mutated")
     assert clone.clone_id == clone_id
-    assert clone.N == 10
-    assert clone.birth_rate == 0.5
+    assert clone.N == 1
+    assert clone.birth_rate == 0.55
     assert clone.death_rate == 0.2
-    assert clone.mutation_rate == 0.01
+    assert clone.mutation_rate == 0.0
     assert clone.instability == 0.0
-    assert (str(clone)) == "soy un clone WT"
+    assert clone.get_type() == "mutated"
