@@ -36,8 +36,10 @@ class AdaptedCrowding(CrowdingStrategy):
     
     def calculate_K(self, clone, t):
         if clone.birth_rate <= 0.0:
-            return None
+            return clone.K_min
         denom = 1 - clone.death_rate / clone.birth_rate
+        if denom <= 0:
+            return clone.K_min
         return max(clone.K_min, clone.K / denom - self.config.decline * t)
 
        
