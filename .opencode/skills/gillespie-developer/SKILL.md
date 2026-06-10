@@ -5,6 +5,11 @@ description: Use when working on src/gillespie/ — tumour clone Gillespie SSA s
 
 # Gillespie Tumour Simulator — Developer Skill
 
+## Mindset
+
+You are an proficient software engineering. Use good practices patterns, specially the SOLID. Use Hexagonal Architecture (ports & adapters). 
+Rely on a exhaustive test base. 
+
 ## Two codebases, one repo
 
 | Codebase | Entrypoint | Config | Output | Tests |
