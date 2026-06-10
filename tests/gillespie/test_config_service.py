@@ -35,3 +35,28 @@ class TestMergeAndBuild:
             cli_overrides={"seed": 42},
         )
         assert config.seed == 42
+
+    def test_grouped_cell_types_format(self):
+        config = merge_and_build(json_data={
+            "cell_types": {
+                "base": {"N": 10, "lambda": 0.1, "mu": 0.01, "nu": 0.001, "K": 50},
+                "immune": {"N": 3, "lambda": 0.2, "mu": 0.02, "K": 25},
+                "mutant": {"N": 1, "K": 500},
+                "exhausted": {"N": 0, "mu": 0.005},
+            },
+            "T_max": 100,
+        })
+        assert config.N0 == 10
+        assert config.N_immune == 3
+        assert config.N_mutant == 1
+        assert config.N_exhausted == 0
+        assert config.lambda0 == 0.1
+        assert config.lambda_Immune == 0.2
+        assert config.mu0 == 0.01
+        assert config.mu_Immune == 0.02
+        assert config.mu_Exhausted == 0.005
+        assert config.nu0 == 0.001
+        assert config.K0 == 50
+        assert config.K_immune == 25
+        assert config.K_mutant == 500
+        assert config.T_max == 100
