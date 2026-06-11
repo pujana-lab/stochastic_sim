@@ -35,7 +35,7 @@ def main() -> None:
         print(f"Saved clones to {args.save_clones}")
 
     if args.save_debug is not None:
-        save_debug_history_csv(args.save_debug, times, history, sim._events)
+        save_debug_history_csv(args.save_debug, times, history, sim.events)
         print(f"Saved debug trace to {args.save_debug}")
 
 
