@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 from typing import Dict, List
-
+from tissue_state import TissueState
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 
@@ -21,7 +21,8 @@ def clone_id_to_str(clone_id: CloneId) -> str:
     else:
         return ".".join(map(str, clone_id))
     
-    
+#TODO: Fix this so that it passes the TissueState Object from which data is pulled
+#TODO: Instead of saving the whole history in one go at the end of the simulation we should write it on the go. (makes more sense for big/long simulations i think)
 def save_history_csv(path: Path, times: List[float], history: List[Dict[CloneId, dict]]) -> None:
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
