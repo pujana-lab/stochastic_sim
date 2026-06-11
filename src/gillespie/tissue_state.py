@@ -86,6 +86,7 @@ class TissueState:
         return {
             cid: {
                 "Type": clone.get_type(),
+                #TODO: Aqui hay que poner que sea *_rate_effective(), pero no se como hacerlo sin hacer loop de imports
                 "N": clone.N,
                 "rb": clone.birth_rate,
                 "rd": clone.death_rate,

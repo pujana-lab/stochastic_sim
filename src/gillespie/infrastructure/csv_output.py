@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 from typing import Dict, List
-from tissue_state import TissueState
+from src.gillespie.tissue_state import TissueState
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 
@@ -26,10 +26,10 @@ def clone_id_to_str(clone_id: CloneId) -> str:
 def save_history_csv(path: Path, times: List[float], history: List[Dict[CloneId, dict]]) -> None:
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["time", "clone_id", "N", "rb", "rd"])
+        writer.writerow(["time","type", "clone_id", "N", "rb", "rd"])
         for t, snap in zip(times, history):
             for cid, values in snap.items():
-                writer.writerow([t, clone_id_to_str(cid), values["N"], values["rb"], values["rd"]])
+                writer.writerow([t, values["Type"] ,clone_id_to_str(cid), values["N"], values["rb"], values["rd"]])
 
 
 def save_clones_csv(path: Path, clones: Dict[CloneId, Clone]) -> None:
