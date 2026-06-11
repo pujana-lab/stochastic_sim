@@ -186,13 +186,14 @@ class TumorSimulation:
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
         if self.config.verbose:
-            print("-------------------")
-            print(f"time:{self.t}" )
-            print(f"EVENT: {event.kind.value}")
-            print(f"KIND: {event.clone_type} ")
-            self.tissue_state.print_pop_map()
-            print("-------------------")
-        
+            if event.clone_type == "mutant" or event.clone_type == "immune":
+                    print("-------------------")
+                    print(f"time:{self.t}" )
+                    print(f"EVENT: {event.kind.value}")
+                    print(f"KIND: {event.clone_type} ")
+                    self.tissue_state.print_pop_map()
+                    print("-------------------")
+                
         return True
     
     def _stopping_cond(self) -> bool:
