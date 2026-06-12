@@ -1,0 +1,11 @@
+{
+  "scenario": "immune-response",
+  "calibrate": [
+    "theta_I",
+    "beta",
+    "fitness_gain"
+  ],
+  "theta_I": 0.001,
+  "beta": 0.001,
+  "fitness_gain": 0.15
+}

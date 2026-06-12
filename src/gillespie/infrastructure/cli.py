@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from src.gillespie.infrastructure.config.cli_config import build_parser, parse_args
 from src.gillespie.application.config_service import merge_and_build
 from src.gillespie.infrastructure.config.json_config import load_config_json, flatten_cell_types
@@ -11,6 +13,11 @@ from src.gillespie.simulation_config import SimulationConfig
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "calibrate":
+        from src.gillespie.calibration.application.cli import calibrate_main
+        calibrate_main(sys.argv[2:] if len(sys.argv) > 2 else None)
+        return
+
     parser = build_parser()
     args = parse_args()
 

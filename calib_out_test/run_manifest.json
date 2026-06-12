@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-12T15:46:08.758497+00:00",
+  "git_commit": "433441473df10e15414492ae02f1dbd32fa0b733",
+  "python_version": "3.12.3",
+  "platform": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+  "calibration_config": {
+    "n_particles": 50,
+    "n_generations": 3,
+    "alpha": 0.6,
+    "epsilon_0": 100000000.0,
+    "epsilon_final": 1.0,
+    "max_attempts": 500,
+    "n_workers": 4,
+    "n_reps": 1,
+    "seed": 42,
+    "output_dir": "calib_out_test"
+  },
+  "priors": {
+    "lambda0": {
+      "param_name": "lambda0",
+      "lo": 0.001,
+      "hi": 0.6,
+      "distribution": "uniform"
+    },
+    "mu0": {
+      "param_name": "mu0",
+      "lo": 0.001,
+      "hi": 0.6,
+      "distribution": "uniform"
+    }
+  }
+}

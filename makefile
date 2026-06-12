@@ -74,6 +74,17 @@ gillespie-all:
 	$(MAKE) gillespie-tumour-growth
 	$(MAKE) gillespie-crowding
 
+test-generate-synthetic-reference:
+	python scripts/generate_synthetic_reference.py --scenario homeostasis --n-replicates 5
+
+test-calibrate:
+	python -m src.gillespie.infrastructure.cli calibrate \
+	  --config calib.json --reference data/reference/reference_homeostasis.csv \
+	  --output ./calib_out_test --resume --prior-sensitivity 200
+
+test-dry-run-calibrate:
+	python -m src.gillespie.infrastructure.cli calibrate \
+	  --config calib.json --reference data/reference/reference_homeostasis.csv --dry-run
 # ── Environment ───────────────────────────────────────────────────────────────
 create_venv:
 	python -m venv venv

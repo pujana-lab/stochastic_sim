@@ -1,0 +1,38 @@
+{
+  "priors": {
+    "lambda0": {"lo": 0.001, "hi": 0.6, "distribution": "uniform"},
+    "mu0": {"lo": 0.001, "hi": 0.6, "distribution": "uniform"}
+  },
+  "fixed_params": {
+    "nu0": 0.0,
+    "N0": 50,
+    "N_immune": 10,
+    "N_mutant": 0,
+    "N_exhausted": 0,
+    "lambda_Immune": 0.01,
+    "mu_Immune": 0.01,
+    "mu_Exhausted": 0.01,
+    "T_max": 30,
+    "use_logistic": true,
+    "use_logistic_adapted": true,
+    "K0": 100,
+    "K_immune": 100,
+    "K_mutant": 200,
+    "theta_I": 0.0,
+    "beta": 0.0,
+    "fitness_gain": 0.0,
+    "verbose": false
+  },
+  "calibration_config": {
+    "n_particles": 50,
+    "n_generations": 3,
+    "alpha": 0.6,
+    "epsilon_0": 1e8,
+    "epsilon_final": 1.0,
+    "max_attempts": 500,
+    "n_workers": 4,
+    "n_reps": 1,
+    "seed": 42,
+    "output_dir": "calib_out"
+  }
+}

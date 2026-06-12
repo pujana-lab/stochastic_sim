@@ -1,0 +1,41 @@
+{
+  "priors": {
+    "lambda0": {"lo": 0.001, "hi": 0.8, "distribution": "uniform"},
+    "mu0": {"lo": 0.001, "hi": 0.8, "distribution": "uniform"},
+    "nu0": {"lo": 1e-6, "hi": 0.05, "distribution": "lognorm"}
+  },
+  "fixed_params": {
+    "N0": 20,
+    "N_mutant": 0,
+    "N_immune": 50,
+    "N_exhausted": 0,
+    "lambda_Immune": 0.01,
+    "mu_Immune": 0.005,
+    "mu_Exhausted": 0.005,
+    "T_max": 30,
+    "use_logistic": true,
+    "use_logistic_adapted": true,
+    "K0": 500,
+    "K_immune": 500,
+    "K_mutant": 500,
+    "theta_I": 0.0005,
+    "beta": 0.0004,
+    "fitness_gain": 0.02,
+    "instability_0": 0.1,
+    "base_instability_buildup": 0.005,
+    "mutation_instability_jump": 0.05,
+    "verbose": false
+  },
+  "calibration_config": {
+    "n_particles": 100,
+    "n_generations": 4,
+    "alpha": 0.6,
+    "epsilon_0": 1e8,
+    "epsilon_final": 1.0,
+    "max_attempts": 1000,
+    "n_workers": 4,
+    "n_reps": 1,
+    "seed": 42,
+    "output_dir": "calib_tumour_out"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "scenario": "tumour-growth",
+  "calibrate": [
+    "lambda0",
+    "mu0",
+    "nu0"
+  ],
+  "lambda0": 0.35,
+  "mu0": 0.2,
+  "nu0": 0.01
+}

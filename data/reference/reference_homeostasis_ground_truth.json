@@ -1,0 +1,9 @@
+{
+  "scenario": "homeostasis",
+  "calibrate": [
+    "lambda0",
+    "mu0"
+  ],
+  "lambda0": 0.3,
+  "mu0": 0.25
+}

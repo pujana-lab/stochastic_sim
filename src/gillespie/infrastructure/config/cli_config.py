@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
+from typing import List, Optional
 
 from src.gillespie.simulation_config import SimulationConfig
 
@@ -82,6 +83,27 @@ def get_explicit_cli_args(namespace: argparse.Namespace, parser: argparse.Argume
             else:
                 result[k] = v
     return result
+
+
+def build_calibrate_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="calibrate",
+        description="ABC-SMC calibration for Gillespie tumour simulator.",
+    )
+    p.add_argument("--config", type=Path, required=True, help="JSON calibration config.")
+    p.add_argument("--reference", type=Path, required=True, help="Reference CSV.")
+    p.add_argument("--weights", type=Path, default=None, help="Precision weights JSON.")
+    p.add_argument("--output", type=Path, default=Path("calibration_results"), help="Output directory.")
+    p.add_argument("--dry-run", action="store_true", help="Print config and exit.")
+    p.add_argument("--resume", action="store_true", help="Resume from saved generations.")
+    p.add_argument("--prior-sensitivity", type=int, default=0, metavar="N", help="Prior sensitivity with N samples.")
+    p.add_argument("--particles", type=int, default=None, help="Override n_particles.")
+    p.add_argument("--generations", type=int, default=None, help="Override n_generations.")
+    p.add_argument("--workers", type=int, default=None, help="Override n_workers.")
+    p.add_argument("--reps", type=int, default=None, help="Override n_reps.")
+    p.add_argument("--seed", type=int, default=None, help="Override random seed.")
+    p.add_argument("-v", "--verbose", action="store_true", help="Debug logging.")
+    return p
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
