@@ -24,8 +24,8 @@ def test_nested_clone_id():
 def make_history_data():
     times = [0.0, 1.0]
     history = [
-        {(): {"N": 10, "rb": 0.5, "rd": 0.2}},
-        {(): {"N": 12, "rb": 0.48, "rd": 0.2}, (1,): {"N": 1, "rb": 0.55, "rd": 0.2}},
+        {(): {"Type": "base", "N": 10, "rb": 0.5, "rd": 0.2}},
+        {(): {"Type": "base", "N": 12, "rb": 0.48, "rd": 0.2}, (1,): {"Type": "mutated", "N": 1, "rb": 0.55, "rd": 0.2}},
     ]
     return times, history
 
@@ -44,7 +44,7 @@ def test_save_history_csv_header(tmp_path):
     with path.open() as f:
         reader = csv.reader(f)
         header = next(reader)
-    assert header == ["time", "clone_id", "N", "rb", "rd"]
+    assert header == ["time", "type", "clone_id", "N", "rb", "rd"]
 
 
 def test_save_history_csv_row_count(tmp_path):
@@ -59,7 +59,7 @@ def test_save_history_csv_row_count(tmp_path):
 
 def test_save_history_csv_clone_id_encoding(tmp_path):
     path = tmp_path / "history.csv"
-    save_history_csv(path, [0.0], [{(): {"N": 5, "rb": 0.5, "rd": 0.2}}])
+    save_history_csv(path, [0.0], [{(): {"Type": "base", "N": 5, "rb": 0.5, "rd": 0.2}}])
     with path.open() as f:
         rows = list(csv.DictReader(f))
     assert rows[0]["clone_id"] == "root"
