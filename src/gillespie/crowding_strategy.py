@@ -35,6 +35,7 @@ class AdaptedCrowding(CrowdingStrategy):
         self.config = config
     
     def calculate_K(self, clone, t):
+        #TODO: revisar esto, no estoy seguro de si kmin es lo correcto aqui. puse none porque realmente si no se esta dividiendo no tiene crowding. se que None es un tipo de dato diferente pero habria que asegurarse de que no esta rompiendo la logica matematica.
         if clone.birth_rate <= 0.0:
             return clone.K_min
         denom = 1 - clone.death_rate / clone.birth_rate

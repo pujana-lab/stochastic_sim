@@ -186,6 +186,7 @@ class TumorSimulation:
 
         self.times.append(self.t)
         self.history.append(self.tissue_state.snapshot())
+        #TODO: revisar esto, no entiendo por que le volvemos a pasar el event al hacer el step, es para luego sacarlo en el debugger? porque si no no le veo el sentido.
         self.events.append(event)
         if self.config.verbose:
             if event.clone_type == "mutant" or event.clone_type == "immune":
