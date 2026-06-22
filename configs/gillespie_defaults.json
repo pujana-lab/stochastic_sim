@@ -2,14 +2,14 @@
   "cell_types": {
     "base": {
       "N": 100,
-      "lambda": 0.005,
+      "lambda_0": 0.005,
       "mu": 0.002,
       "nu": 0.0002,
       "K": 100
     },
     "immune": {
       "N": 50,
-      "lambda": 0.005,
+      "lambda_0": 0.005,
       "mu": 0.003,
       "K": 50
     },
@@ -45,7 +45,6 @@
 
   "verbose": true,
   "scale": true,
-  "decay": true,
-  "system_size": 10000,
+  "decay": false,
   "OMEGA": 100
 }

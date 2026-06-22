@@ -16,6 +16,11 @@ class CloneParams:
 class SimulationConfig:
 
     OMEGA: int = 100 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
+    
+    # Valores base para parámetros derivados (si no se usan, se ignoran)
+    beta_base: Optional[float] = None
+    theta_I_base: Optional[float] = None
+    mu_Immune_base: Optional[float] = None 
 
 
     # wt: CloneParams = field(CloneParams(N0=10000, K=10000, birth_rate=0.005, death_rate=0.002, mutation_rate=0.0002))
@@ -32,7 +37,7 @@ class SimulationConfig:
     lambda0: float = 0.005
     lambda_Immune: float = 0.005
     mu0: float = 0.002
-    mu_Immune: float = 0.003
+    
     mu_Exhausted: float = 0.002
     nu0: float = 0.0002
 
@@ -54,6 +59,7 @@ class SimulationConfig:
     # interaction parameters
     theta_I: float = 0.0005  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
     beta: float = 0.0004   # Activation rate: mutated cells activating immune cells (N_immune * N_mutant * beta)
+    mu_Immune: float = 0.003
 
     # instability / mutation parameters
     d1_0: float = 0.0
@@ -73,5 +79,32 @@ class SimulationConfig:
     
     #TODO: implementar una forma de escalar por el system size parametros sin tener que hacerlo a mano (relacionado con task de linea 6)
 
+    def __post_init__(self):
+        """
+        Calcula parámetros derivados basándose en valores base y OMEGA.
+        Si se define beta_base, beta se reescala como: beta = beta_base / OMEGA
+        Lo mismo para theta_I_base.
+        
+        Ejemplo JSON:
+        {
+            "OMEGA": 100,
+            "beta_base": 0.04,
+            "theta_I_base": 0.05
+        }
+        
+        Resultado:
+        - beta = 0.04 / 100 = 0.0004
+        - theta_I = 0.05 / 100 = 0.0005
+        """
+        # Reescalar beta si se proporciona valor base
+        if self.scale:
+            object.__setattr__(self, 'beta', self.beta / self.OMEGA)
+        
+        # Reescalar theta_I si se proporciona valor base
+        if self.scale:
+            object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
+
+        if self.scale:
+            object.__setattr__(self,'mu_Immune', self.mu_Immune / self.OMEGA)
 
     

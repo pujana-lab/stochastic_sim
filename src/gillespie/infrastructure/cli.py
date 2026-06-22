@@ -17,6 +17,7 @@ def main() -> None:
     base: dict = {}
     if args.config is not None:
         base = flatten_cell_types(load_config_json(args.config))
+        print(base)
     cli_overrides = get_explicit_cli_args(args, parser)
     base.update(cli_overrides)
     config = SimulationConfig(**base)

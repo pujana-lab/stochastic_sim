@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--N-exhausted", dest="N_exhausted", type=int, default=None)
     p.add_argument("--N-mutant", dest="N_mutant", type=int, default=None)
 
-    p.add_argument("--lambda-Immune", dest="lambda_Immune", type=float, default=None)
+    p.add_argument("--lambda_0-Immune", dest="lambda_Immune", type=float, default=None)
 
     p.add_argument("--mu-Immune", dest="mu_Immune", type=float, default=None)
     p.add_argument("--mu-Exhausted", dest="mu_Exhausted", type=float, default=None)
@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--scale", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--decay", action=argparse.BooleanOptionalAction, default=False)
-    p.add_argument("--system-size", dest="system_size", type=int, default=None)
+   
 
     p.add_argument("--omega", dest="OMEGA", type=int, default=None)
 

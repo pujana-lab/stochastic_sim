@@ -9,7 +9,7 @@ class EvolutionEngineDeterministic(EvolutionEngineInterface):
         if total_fitness == 0:
             return None  # Evitar división por cero            
         # Seleccionar el grupo con la mayor contribución al fitness total
-        best_group = max(population.groups.values(), key=lambda g: g.fitness * g.n)
+        best_group = max(population.groups.values(), key=lambda_0 g: g.fitness * g.n)
         return best_group.name
     
     def get_victim_group(self, population) -> str:
@@ -19,7 +19,7 @@ class EvolutionEngineDeterministic(EvolutionEngineInterface):
         if not populations_with_individuals:
             return None  # No hay grupos con individuos
         
-        worst_group = min(populations_with_individuals, key=lambda g: g.fitness * g.n)
+        worst_group = min(populations_with_individuals, key=lambda_0 g: g.fitness * g.n)
         return worst_group.name
 
     def _clean_population(self, population):

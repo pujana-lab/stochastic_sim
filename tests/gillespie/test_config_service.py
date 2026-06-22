@@ -39,8 +39,8 @@ class TestMergeAndBuild:
     def test_grouped_cell_types_format(self):
         config = merge_and_build(json_data={
             "cell_types": {
-                "base": {"N": 10, "lambda": 0.1, "mu": 0.01, "nu": 0.001, "K": 50},
-                "immune": {"N": 3, "lambda": 0.2, "mu": 0.02, "K": 25},
+                "base": {"N": 10, "lambda_0": 0.1, "mu": 0.01, "nu": 0.001, "K": 50},
+                "immune": {"N": 3, "lambda_0": 0.2, "mu": 0.02, "K": 25},
                 "mutant": {"N": 1, "K": 500},
                 "exhausted": {"N": 0, "mu": 0.005},
             },

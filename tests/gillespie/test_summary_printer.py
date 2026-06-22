@@ -63,7 +63,7 @@ def test_print_summary_top_clones_limited_by_k():
     buf = StringIO()
     print_summary([1.0], clones, top_k=1, file=buf)
     out = buf.getvalue()
-    assert "lambda=0.5000" in out
+    assert "lambda_0=0.5000" in out
 
 
 def test_print_summary_empty_clones():

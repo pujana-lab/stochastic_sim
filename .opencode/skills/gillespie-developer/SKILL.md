@@ -86,7 +86,7 @@ Clone (base — _registry: Dict[str, Type[Clone]], __init_subclass__(clone_type=
 ### Crowding strategies
 
 - **SimpleCrowding**: `C(t) = max(0, 1 - N_crowd / max(Kmin, K - decline * t))`
-- **AdaptedCrowding**: `C(t) = max(0, 1 - N_crowd / max(Kmin, K / (1 - mu/lambda) - decline * t))`
+- **AdaptedCrowding**: `C(t) = max(0, 1 - N_crowd / max(Kmin, K / (1 - mu/lambda_0) - decline * t))`
 
 Both only apply when `config.use_logistic=True` (which **must always be True** — "SIEMPRE TIENE QUE SER O EL CRECIMIENTO EXPONENCIAL EXPLOTA").
 
