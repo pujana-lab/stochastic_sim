@@ -42,8 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--T-max", dest="T_max", type=float, default=10.0)
     p.add_argument("--seed", type=int, default=None)
 
-    p.add_argument("--use-logistic", dest="use_logistic", action="store_true")
-    p.add_argument("--use-logistic-adapted", dest="use_logistic_adapted", action="store_true")
+    p.add_argument("--use-logistic", dest="use_logistic", action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument("--use-logistic-adapted", dest="use_logistic_adapted", action=argparse.BooleanOptionalAction, default=False)
 
     p.add_argument("--K0", type=float, default=100_000_000)
     p.add_argument("--K-immune", dest="K_immune", type=float, default=None)
@@ -55,9 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--theta-I", dest="theta_I", type=float, default=None)
     p.add_argument("--beta", type=float, default=None)
 
-    p.add_argument("--verbose", action="store_true")
-    p.add_argument("--scale", action="store_true")
-    p.add_argument("--decay", action="store_true")
+    p.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
+    p.add_argument("--scale", action=argparse.BooleanOptionalAction, default=False)
+    p.add_argument("--decay", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--system-size", dest="system_size", type=int, default=None)
 
     p.add_argument("--omega", dest="OMEGA", type=int, default=None)

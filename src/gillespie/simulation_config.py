@@ -68,7 +68,7 @@ class SimulationConfig:
     verbose: bool = True
     scale: bool = True
     decay: bool = True
-    system_size: int = 10000
+    
     
     
     #TODO: implementar una forma de escalar por el system size parametros sin tener que hacerlo a mano (relacionado con task de linea 6)
