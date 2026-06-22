@@ -17,11 +17,6 @@ class SimulationConfig:
 
     OMEGA: int = 100 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
-    # Valores base para parámetros derivados (si no se usan, se ignoran)
-    beta_base: Optional[float] = None
-    theta_I_base: Optional[float] = None
-    mu_Immune_base: Optional[float] = None 
-
 
     # wt: CloneParams = field(CloneParams(N0=10000, K=10000, birth_rate=0.005, death_rate=0.002, mutation_rate=0.0002))
     # mutant: CloneParams = field( CloneParams(N0=200, K=3000, birth_rate=0.005, death_rate=0.002))
@@ -46,13 +41,12 @@ class SimulationConfig:
     seed: Optional[int] = None
 
     # logistic / carrying capacity
-    use_logistic: bool = True  # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA
-    use_logistic_adapted: bool = True
-    K0: int = OMEGA
-    K_immune: int = np.ceil(OMEGA/2)
-    K_mutant: int = OMEGA * 2
+    #TODO: revisar esto. no se si definir Omega como volumen o como numero discreto de celulas. el problema es que si es como numero discreto los K tienen que ser fracciones y si es como volumen los K son enteros. en cualquier caso al multiplicar por Omega luego siempre acaban siendo enteros. pero va variando el tipo de dato lo cual no creo que sea optimo.
+    K0: float|int = 1
+    K_immune: float|int = np.ceil(1/2)
+    K_mutant: float|int = 2
     decline: float = 0.0
-    Kmin: float = 1.0
+    Kmin: float = 1
 
     fitness_gain: float = 0.2
 
@@ -73,7 +67,9 @@ class SimulationConfig:
     # misc
     verbose: bool = True
     scale: bool = True
-    decay: bool = True
+    decay: bool = False
+    use_logistic: bool = True  # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA
+    use_logistic_adapted: bool = True
     
     
     
@@ -98,13 +94,12 @@ class SimulationConfig:
         """
         # Reescalar beta si se proporciona valor base
         if self.scale:
-            object.__setattr__(self, 'beta', self.beta / self.OMEGA)
-        
-        # Reescalar theta_I si se proporciona valor base
-        if self.scale:
+            object.__setattr__(self, 'beta', self.beta / self.OMEGA)      
             object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
-
-        if self.scale:
             object.__setattr__(self,'mu_Immune', self.mu_Immune / self.OMEGA)
+            object.__setattr__(self,'K_0', int(np.ceil(self.K0 * self.OMEGA)))
+            object.__setattr__(self,'K_immune',int(np.ceil( self.K_immune * self.OMEGA)))
+            object.__setattr__(self,'K_mutant', int(np.ceil(self.K_mutant * self.OMEGA)))
+            
 
     
