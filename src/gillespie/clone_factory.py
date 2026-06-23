@@ -12,9 +12,9 @@ class CloneFactory:
 #TODO: testear este nuevo metodo y meterlo en vez del otro (mas escalable). Probablemente ni necesitemos factory.
     def create_clone(
         self, 
-        clone_id: CloneId, 
+        clone_id: CloneId =  None, 
         clone_type: str = "base",
-        N: int = 1, 
+        N: int = None, 
         parent: Optional[Clone] = None
     ) -> Clone:
         

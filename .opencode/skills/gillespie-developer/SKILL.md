@@ -75,7 +75,7 @@ Clone (base — _registry: Dict[str, Type[Clone]], __init_subclass__(clone_type=
 #### ImmuneClone ("immune")
 - `birth_rate_effective` = `lambda_Immune * N_immune * crowding + N_immune * N_mutated * beta` (activation boost!)
 - `death_rate_effective` = 0 (base death_rate = 0.0)
-- `exhaustion_rate_effective` = `mu_Immune * N_immune * N_mutated` (cancer-dependent exhaustion!)
+- `exhaustion_rate_effective` = `omega_exhaust * N_immune * N_mutated` (cancer-dependent exhaustion!)
 - `crowding_numerator` = `N_immune + N_exhausted`
 
 #### ExhaustedClone ("exhausted")
@@ -105,7 +105,7 @@ class SimulationConfig:
     lambda0: float = 0.005     # WT birth rate
     lambda_Immune: float = 0.005
     mu0: float = 0.002         # WT death rate
-    mu_Immune: float = 0.003   # immune → exhausted rate
+    omega_exhaust: float = 0.003   # immune → exhausted rate
     mu_Exhausted: float = 0.002
     nu0: float = 0.0002        # WT mutation rate
 

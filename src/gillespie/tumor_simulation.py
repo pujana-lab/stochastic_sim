@@ -27,11 +27,10 @@ class TumorSimulation:
         # clones_dict:Dict[CloneType,Clone]= {}
         # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
         clones_dict: Dict[CloneId, Clone] = {
-            (): self.clone_factory.create_clone(clone_id=(),clone_type="base",N=self.config.N0),
-            (-3,): self.clone_factory.create_clone(clone_id=(-3,),clone_type="mutated",N=self.config.N_mutant),
-            # (-4,4,4,): self.clone_factory.create_clone(clone_id=(-4,4,4),clone_type="mutated_test",N=0),
-            (-1,): self.clone_factory.create_clone(clone_id=(-1,),clone_type="immune",N=self.config.N_immune),
-            (-2,): self.clone_factory.create_clone(clone_id=(-2,),clone_type="exhausted",N=self.config.N_exhausted)
+            (): self.clone_factory.create_clone(clone_type="base"),
+            (-3,): self.clone_factory.create_clone(clone_type="mutated"),
+            (-1,): self.clone_factory.create_clone(clone_type="immune"),
+            (-2,): self.clone_factory.create_clone(clone_type="exhausted")
         }
         
 
@@ -50,11 +49,13 @@ class TumorSimulation:
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
         self.events: List[Optional[Event]] = [None]
 
+
+    #TODO: esto huele feo
     def create_clone(
         self,
         clone_id: CloneId,
         clone_type: str = "base",
-        N: int = 1,
+        N: int = None,
         parent: Optional[Clone] = None,
     ) -> Clone:
         clone = self.clone_factory.create_clone(
@@ -137,6 +138,8 @@ class TumorSimulation:
         clone.kill()
     
     def _induce_exhaustion(self, clone: Clone) -> None:
+        if self.config.verbose == True:
+            print(clone.clone_id)
         self.tissue_state.clones[clone.clone_id].kill()
         self.tissue_state.clones[(-2,)].divide()
     
@@ -189,7 +192,7 @@ class TumorSimulation:
         #TODO: revisar esto, no entiendo por que le volvemos a pasar el event al hacer el step, es para luego sacarlo en el debugger? porque si no no le veo el sentido.
         self.events.append(event)
         if self.config.verbose:
-            if event.clone_type == "mutant" or event.clone_type == "immune":
+            if event.clone_type == "mutated" or event.clone_type == "immune":
                     print("-------------------")
                     print(f"time:{self.t}" )
                     print(f"EVENT: {event.kind.value}")

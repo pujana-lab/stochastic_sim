@@ -20,25 +20,27 @@ class Clone:
             Clone._registry[clone_type] = cls
             cls._type_name = clone_type
 
-    def __init__(self, clone_id: CloneId, config: SimulationConfig, N: int = 1, parent: Optional[CloneId] = None):
+    def __init__(self, config: SimulationConfig, clone_id: CloneId = None, N: int = None, parent: Optional[CloneId] = None):
         
         #TODO: todo lo que dependa de la clase y no de la instancia deberia ir guardado dentro de la clase (sacar todos los self. de cosas que no sean dinamicas) y aunque lo sean deberian ir fuera igual y actualizarse para todo el tipo. lo unico que deberia ir dentro son las coasas que dependan del tiempo Y ADEMAS queramos trackear por clon y no por tipo (inestabilidad genomica en un futuro)
-        self.clone_id: CloneId = clone_id
+        
         self.config: SimulationConfig = config
-        self.N: int = N
+        self.cell_parameters = config.cell_parameters[self.get_type()]
+        self.clone_id: CloneId = self.cell_parameters.default_id if clone_id is None else clone_id
+        self.N: int = self.cell_parameters.N if N is None else N
         self.parent: CloneId = parent
         self.children_count: int = 0
         self.crowding_value: float = 0.0
         
-        self.birth_rate: float = config.lambda0
-        self.death_rate: float = config.mu0
-        self.mutation_rate: float = 0.0
-        self.exhaustion_rate: float = 0.0
+        self.birth_rate: float = self.cell_parameters.lambda0
+        self.death_rate: float = self.cell_parameters.mu
+        self.mutation_rate: float = self.cell_parameters.nu
+        self.exhaustion_rate: float = self.cell_parameters.omega_exhaust
 
-        self.K: int = None
+        self.K: int = self.cell_parameters.K
         self.K_min: int = config.Kmin
 
-        self.next_mutation: str = ""
+        self.next_mutation: str = self.cell_parameters.next_mutation
         self.instability: float = 0.0
         self.buildup: float = 0.0
         self.d1: float = 0.0
@@ -89,9 +91,6 @@ class Clone:
 class WildTypeClone(Clone, clone_type = "base"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.next_mutation = "mutated"
-        self.mutation_rate = self.config.nu0
-        self.K = self.config.K0
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         pop_map = tissue_state.pop_map
@@ -100,8 +99,7 @@ class WildTypeClone(Clone, clone_type = "base"):
 class MutatedClone(Clone, clone_type = "mutated"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
-        self.K = self.config.K_mutant
+        self.birth_rate = self.cell_parameters.lambda0 * (1.0 + self.config.fitness_gain)
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return tissue_state.pop_map.get("mutated", 0)
@@ -123,10 +121,7 @@ class MutatedClone(Clone, clone_type = "mutated"):
 class ImmuneClone(Clone, clone_type = "immune"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.birth_rate = self.config.lambda_Immune
-        self.death_rate = 0.0
-        self.exhaustion_rate = self.config.mu_Immune
-        self.K = self.config.K_immune
+     
 
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
@@ -155,8 +150,6 @@ class ImmuneClone(Clone, clone_type = "immune"):
 class ExhaustedClone(Clone, clone_type = "exhausted"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.birth_rate = 0.0
-        self.death_rate = self.config.mu_Exhausted
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return 0

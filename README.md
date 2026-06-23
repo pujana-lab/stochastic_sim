@@ -114,7 +114,7 @@ La simulación termina cuando se alcanza `T_max` o no hay más eventos posibles.
 Define los parámetros globales del modelo:
 
 - poblaciones iniciales: `N0`, `N_mutant`, `N_immune`, `N_exhausted`
-- tasas base: `lambda0`, `lambda_Immune`, `mu0`, `mu_Immune`, `mu_Exhausted`, `nu0`
+- tasas base: `lambda0`, `lambda_Immune`, `mu0`, `omega_exhaust`, `mu_Exhausted`, `nu0`
 - parámetros de interacción: `theta_I`, `beta`
 - capacidades: `K0`, `K_immune`, `K_mutant`, `decline`, `Kmin`
 - tiempo máximo: `T_max`

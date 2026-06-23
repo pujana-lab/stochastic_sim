@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--lambda_0-Immune", dest="lambda_Immune", type=float, default=defaults.get("lambda_Immune"))
 
-    p.add_argument("--mu-Immune", dest="mu_Immune", type=float, default=defaults.get("mu_Immune"))
+    p.add_argument("--mu-Immune", dest="omega_exhaust", type=float, default=defaults.get("omega_exhaust"))
     p.add_argument("--mu-Exhausted", dest="mu_Exhausted", type=float, default=defaults.get("mu_Exhausted"))
 
     p.add_argument("--T-max", dest="T_max", type=float, default=defaults.get("T_max"))

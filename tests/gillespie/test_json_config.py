@@ -63,7 +63,7 @@ def test_flatten_cell_types_all_types():
         "cell_types": {
             "base": {"N": 10, "lambda_0": 0.1, "mu": 0.01, "nu": 0.001, "K": 100},
             "immune": {"N": 5, "lambda_0": 0.2, "mu": 0.02, "K": 50},
-            "mutant": {"N": 3, "K": 200},
+            "mutated": {"N": 3, "K": 200},
             "exhausted": {"N": 1, "mu": 0.05},
         },
         "T_max": 1000,
@@ -76,7 +76,7 @@ def test_flatten_cell_types_all_types():
     assert result["lambda0"] == 0.1
     assert result["lambda_Immune"] == 0.2
     assert result["mu0"] == 0.01
-    assert result["mu_Immune"] == 0.02
+    assert result["omega_exhaust"] == 0.02
     assert result["mu_Exhausted"] == 0.05
     assert result["nu0"] == 0.001
     assert result["K0"] == 100
