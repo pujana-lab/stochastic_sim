@@ -13,7 +13,7 @@ _CELL_TYPE_MAP: dict[str, dict[str, str]] = {
     "immune": {
         "N": "N_immune",
         "lambda_0": "lambda_Immune",
-        "mu": "mu_Immune_base",
+        "mu": "mu_Immune",
         "K": "K_immune",
     },
     "mutant": {

@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 @dataclass(frozen=True)
 class CloneParams:
-    N0: int = 0
+    N: int = 0
     K: int = 0
     lambda0: float = 0.0
     mu: float = 0.0
@@ -17,12 +17,7 @@ class SimulationConfig:
 
     OMEGA: int = 100 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
-
-    # wt: CloneParams = field(CloneParams(N0=10000, K=10000, birth_rate=0.005, death_rate=0.002, mutation_rate=0.0002))
-    # mutant: CloneParams = field( CloneParams(N0=200, K=3000, birth_rate=0.005, death_rate=0.002))
-    # immune: CloneParams = field( CloneParams(N0=100, K=50, birth_rate=0.005, death_rate=0.003))
-    # exhausted: CloneParams = field(CloneParams(N0=0, death_rate=0.002))
-    # TODO: searar parametros por tipo celular. Cambiar pparametros globales aparte. Intentar imlementar escalado por system size.
+    #TODO: IMPORTANTE: Mover los parametros de las celulas de flat a por tipo. que tengan un string acorde con el tipo y se puedan acceder al crear celulas como my_defaults=self.config.params("cell_type") y luego hacer birth_rate=my_defaults.lambda0
     N0: int = 100
     N_immune: int = 50
     N_exhausted: int = 0
