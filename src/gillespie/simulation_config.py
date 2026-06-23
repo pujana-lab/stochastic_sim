@@ -61,14 +61,13 @@ class SimulationConfig:
 
     # misc
     verbose: bool = True
-    scale: bool = True
+    scale: bool = True # Mantener siempre true a 
     decay: bool = False
     use_logistic: bool = True  # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA
     use_logistic_adapted: bool = True
     
     
     
-    #TODO: implementar una forma de escalar por el system size parametros sin tener que hacerlo a mano (relacionado con task de linea 6)
 
     def __post_init__(self):
         """
