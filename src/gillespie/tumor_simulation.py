@@ -9,7 +9,7 @@ from src.gillespie.tissue_state import TissueState
 from src.gillespie.event import Event
 from src.gillespie.event_type import EventType
 from src.gillespie.rate_matrix import RateMatrix
-from src.gillespie.crowding_strategy import CrowdingStrategy, SimpleCrowding, AdaptedCrowding
+from src.gillespie.crowding_strategy import CrowdingStrategy
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone_factory import CloneFactory
 
@@ -33,17 +33,14 @@ class TumorSimulation:
             (-2,): self.clone_factory.create_clone(clone_type="exhausted")
         }
         
-
-        # Encapsulate tissue state
-        self.tissue_state: TissueState = TissueState(clones=clones_dict)
-
         self.times: List[float] = [0.0]
+        # Encapsulate tissue state
+        self.tissue_state: TissueState = TissueState(t= self.t, clones=clones_dict)
 
-        self.crowding_strategy: CrowdingStrategy = (
-            AdaptedCrowding(config)
-            if config.use_logistic_adapted
-            else SimpleCrowding(config)
-        )
+
+
+        # Use crowding strategy from config (initialized in SimulationConfig.__post_init__)
+        self.crowding_strategy: CrowdingStrategy = self.config.crowding_strategy
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
@@ -86,11 +83,8 @@ class TumorSimulation:
 
             clone_type = clone.get_type()
             if clone_type not in type_rates:
-                crowding_value = self.crowding_strategy.crowding(
-                    clone=clone, t=self.t, tissue_state=self.tissue_state
-                )
                 type_rates[clone_type] = (
-                    clone.birth_rate_effective(tissue_state=self.tissue_state, crowding=crowding_value),
+                    clone.birth_rate_effective(tissue_state=self.tissue_state),
                     clone.death_rate_effective(tissue_state=self.tissue_state),
                     clone.mutation_rate_effective(tissue_state=self.tissue_state),
                     clone.exhaustion_rate_effective(tissue_state=self.tissue_state),
@@ -186,8 +180,10 @@ class TumorSimulation:
         event = rate_matrix.choose_event(self.rng.random())
         self._apply_event(event)
         self.tissue_state.update_pop_map()
+        
 
         self.times.append(self.t)
+        self.tissue_state.t = self.t
         self.history.append(self.tissue_state.snapshot())
         #TODO: revisar esto, no entiendo por que le volvemos a pasar el event al hacer el step, es para luego sacarlo en el debugger? porque si no no le veo el sentido.
         self.events.append(event)

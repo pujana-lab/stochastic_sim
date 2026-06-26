@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from src.gillespie.cloneId import CloneId
 import numpy as np
+
+if TYPE_CHECKING:
+    from src.gillespie.crowding_strategy import CrowdingStrategy
 @dataclass(frozen=True)
 class CellTypeConfig:
     default_id: CloneId = None
@@ -46,7 +49,7 @@ _DEFAULT_CELL_PARAMETERS = {
 @dataclass(frozen=True)
 class SimulationConfig:
 
-    OMEGA: int = 100 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
+    OMEGA: int = 4000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
     
     #TODO: IMPORTANTE: Mover los parametros de las celulas de flat a por tipo. que tengan un string acorde con el tipo y se puedan acceder al crear celulas como my_defaults=self.config.params("cell_type") y luego hacer birth_rate=my_defaults.lambda0
@@ -84,13 +87,19 @@ class SimulationConfig:
     use_logistic: bool = True  # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA
     use_logistic_adapted: bool = True
     
+    # Crowding strategy (será inicializado en __post_init__)
+    crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)
+    
     
     def __post_init__(self):
-        """Scale interaction parameters by OMEGA"""
+        """Scale interaction parameters by OMEGA and initialize crowding strategy"""
         if self.scale:
             object.__setattr__(self, 'beta', self.beta / self.OMEGA)
             object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
-            
+             # Initialize crowding strategy (after K values are calculated)
+            from src.gillespie.crowding_strategy import SimpleCrowding, AdaptedCrowding
+            strategy_class = AdaptedCrowding if self.use_logistic_adapted else SimpleCrowding
+            object.__setattr__(self, 'crowding_strategy', strategy_class(self))
             # Escalar K para cada tipo de célula
             new_cell_params = {}
             for cell_type, config in self.cell_parameters.items():
@@ -113,4 +122,6 @@ class SimulationConfig:
                     new_cell_params[cell_type] = config
             
             object.__setattr__(self, 'cell_parameters', new_cell_params)
+        
+       
     

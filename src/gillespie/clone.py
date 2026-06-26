@@ -46,6 +46,9 @@ class Clone:
         self.d1: float = 0.0
         self.d2: float = 0.0
 
+        self.actual_K = config.crowding_strategy.calculate_K(self)
+        
+
     def get_type(self) -> str:
         return self._type_name
     
@@ -58,8 +61,8 @@ class Clone:
     def mutation_multiplier(self) -> float:
         return 1.0 + self.instability
 
-    def birth_rate_effective(self,tissue_state: "TissueState",crowding:float) -> float:
-        return self.birth_rate * tissue_state.pop_map.get(self.get_type(),0) * crowding
+    def birth_rate_effective(self,tissue_state: "TissueState") -> float:
+        return self.birth_rate * tissue_state.pop_map.get(self.get_type(),0) * self.config.crowding_strategy.crowding(self,tissue_state=tissue_state)
 
     def death_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.death_rate * tissue_state.pop_map.get(self.get_type(),0)
@@ -128,12 +131,12 @@ class ImmuneClone(Clone, clone_type = "immune"):
         pop_map = tissue_state.pop_map
         return pop_map.get("immune", 0) + pop_map.get("exhausted", 0)
     
-    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
+    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Birth rate increases through activation by cancer cells.
         Formula: base_birth_rate + N * N_cancer * beta
         (beta is a global parameter from config)
         """
-        base_birth = super().birth_rate_effective(tissue_state, crowding)
+        base_birth = super().birth_rate_effective(tissue_state)
         n_self = tissue_state.pop_map.get("immune", 0)
         n_cancer = tissue_state.pop_map.get("mutated", 0)
         activation_boost = n_self * n_cancer * self.config.beta
@@ -154,7 +157,7 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return 0
     
-    def birth_rate_effective(self, tissue_state: "TissueState", crowding: float) -> float:
+    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Exhausted cells cannot divide."""
         return 0.0
 

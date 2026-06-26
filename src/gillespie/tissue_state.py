@@ -14,6 +14,7 @@ class TissueState:
     Contains all clones and their populations, and provides methods to query
     population counts by clone type.
     """
+    t: int
     ## igual es mejor guardar como array de clones 
     clones: Dict[CloneId, 'Clone']  # type: ignore
     pop_map: Dict[str, int] = field(init=False)
@@ -88,6 +89,7 @@ class TissueState:
                 "Type": clone.get_type(),
                 #TODO: Aqui hay que poner que sea *_rate_effective(), pero no se como hacerlo sin hacer loop de imports
                 "N": clone.N,
+                "t": self.t, 
                 "rb": clone.birth_rate,
                 "rd": clone.death_rate,
                 "rm": clone.mutation_rate,

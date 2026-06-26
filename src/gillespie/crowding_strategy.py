@@ -11,14 +11,18 @@ class CrowdingStrategy(ABC):
     def __init__(self, config: "SimulationConfig"):
         self.config = config
     
-    def crowding(self, clone: "Clone", t: float, tissue_state: "TissueState") -> float:
+    def crowding(self, clone: "Clone", tissue_state: "TissueState") -> float:
         if not self.config.use_logistic:
             return 1.0
         if clone.get_type() == "exhausted":
             return 1.0
             
         numerator_N = clone.crowding_numerator(tissue_state)
-        Kt = self.calculate_K(clone, t)
+        if self.config.decay:
+            Kt = max(clone.K_min, clone.actual_K - self.config.decline * tissue_state.t)
+
+        else:
+            Kt = clone.actual_K
         
         # Si Kt es infinito, numerator_N / inf = 0.0 -> crowding devuelve 1.0 (sin freno)
         if math.isinf(Kt):
@@ -28,8 +32,10 @@ class CrowdingStrategy(ABC):
         return max(0.0, 1.0 - numerator_N / Kt)
 
     @abstractmethod
-    def calculate_K(self, clone: "Clone", t: float) -> float:
+    def calculate_K(self, clone: "Clone") -> float:
         """Calcula la capacidad portante microscópica (Kt) para el tiempo dado."""
+        ...
+    def calculate_decay(self, clone: "Clone", t: float) -> float:
         ...
 
 class SimpleCrowding(CrowdingStrategy):
@@ -37,12 +43,10 @@ class SimpleCrowding(CrowdingStrategy):
         # Aseguramos que clone.K_min sea como mínimo 1.0 en la configuración de tus objetos
         k_floor = max(1.0, getattr(clone, 'K_min', 1.0))
         
-        if self.config.decay:
-            return max(k_floor, clone.K - self.config.decline * t)
         return max(k_floor, clone.K)
 
 class AdaptedCrowding(CrowdingStrategy):
-    def calculate_K(self, clone: "Clone", t: float) -> float:
+    def calculate_K(self, clone: "Clone") -> float:
         # Salvaguarda 1: Si no hay tasa de nacimiento, la población no expande su nicho
         if clone.birth_rate <= 0.0:
             return float('inf')
@@ -55,11 +59,9 @@ class AdaptedCrowding(CrowdingStrategy):
             return float('inf')
             
         # Flujo estándar: Inflado inverso de la capacidad microscópica
-        K_inflated = clone.K / denom
+        K_inflated = math.ceil(clone.K / denom)
+        
         
         k_floor = max(1.0, getattr(clone, 'K_min', 1.0))
-        
-        # Salvaguarda 3: Protección frente al decaimiento temporal del tejido
-        if self.config.decay:
-            return max(k_floor, K_inflated - self.config.decline * t)
+
         return max(k_floor, K_inflated)
