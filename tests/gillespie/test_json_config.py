@@ -49,7 +49,7 @@ def test_flatten_passes_through_non_cell_type_keys():
 
 
 def test_flatten_cell_types_base():
-    raw = {"cell_types": {"base": {"N": 100, "lambda": 0.005, "mu": 0.002, "nu": 0.0002, "K": 50}}}
+    raw = {"cell_types": {"base": {"N": 100, "lambda_0": 0.005, "mu": 0.002, "nu": 0.0002, "K": 50}}}
     result = flatten_cell_types(raw)
     assert result["N0"] == 100
     assert result["lambda0"] == 0.005
@@ -61,9 +61,9 @@ def test_flatten_cell_types_base():
 def test_flatten_cell_types_all_types():
     raw = {
         "cell_types": {
-            "base": {"N": 10, "lambda": 0.1, "mu": 0.01, "nu": 0.001, "K": 100},
-            "immune": {"N": 5, "lambda": 0.2, "mu": 0.02, "K": 50},
-            "mutant": {"N": 3, "K": 200},
+            "base": {"N": 10, "lambda_0": 0.1, "mu": 0.01, "nu": 0.001, "K": 100},
+            "immune": {"N": 5, "lambda_0": 0.2, "mu": 0.02, "K": 50},
+            "mutated": {"N": 3, "K": 200},
             "exhausted": {"N": 1, "mu": 0.05},
         },
         "T_max": 1000,
@@ -76,7 +76,7 @@ def test_flatten_cell_types_all_types():
     assert result["lambda0"] == 0.1
     assert result["lambda_Immune"] == 0.2
     assert result["mu0"] == 0.01
-    assert result["mu_Immune"] == 0.02
+    assert result["omega_exhaust"] == 0.02
     assert result["mu_Exhausted"] == 0.05
     assert result["nu0"] == 0.001
     assert result["K0"] == 100
@@ -100,7 +100,7 @@ def test_flatten_unknown_inner_key_ignored():
 
 def test_flatten_combined_with_global_keys():
     raw = {
-        "cell_types": {"base": {"N": 10, "lambda": 0.1}},
+        "cell_types": {"base": {"N": 10, "lambda_0": 0.1}},
         "T_max": 500,
         "fitness_gain": 0.3,
     }

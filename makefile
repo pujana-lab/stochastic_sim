@@ -34,7 +34,7 @@ gillespie-homeostasis:
 	  --save-debug results_gillespie_homeostasis_debug.csv
 
 # Scenario 2: tumour growth with genomic instability and clonal evolution.
-# lambda > mu drives net growth; nu0 > 0 generates mutant subclones that
+# lambda_0 > mu drives net growth; nu0 > 0 generates mutant subclones that
 # accumulate instability over time.
 gillespie-tumour-growth:
 	$(GILLESPIE) \

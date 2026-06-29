@@ -33,7 +33,7 @@ def print_summary(
         print(
             f"  {clone_id_to_str(clone.clone_id):<12} "
             f"N={clone.N:<8d} "
-            f"lambda={clone.birth_rate:.4f} "
+            f"lambda_0={clone.birth_rate:.4f} "
             f"mu={clone.death_rate:.4f} "
             f"nu={clone.mutation_rate:.4f} "
             f"instability={clone.instability:.6f} "

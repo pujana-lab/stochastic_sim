@@ -1,21 +1,22 @@
 {
   "cell_types": {
     "base": {
-      "N": 100,
+      "N": 0,
       "lambda_0": 0.005,
       "mu": 0.002,
       "nu": 0.0002,
       "K": 100
     },
     "immune": {
-      "N": 50,
-      "lambda_0": 0.005,
-      "mu": 0.003,
+      "N": 4,
+      "lambda_0": 0,
+      "mu": 0,
       "K": 50
     },
     "mutated": {
-      "N": 0,
-      "K": 200
+      "N": 3,
+      "lambda_0": 0.5,
+      "K": 0
     },
     "exhausted": {
       "N": 0,
@@ -23,17 +24,17 @@
     }
   },
 
-  "T_max": 2000,
+  "T_max": 2,
   "seed": null,
 
-  "use_logistic": true,
+  "use_logistic": false,
   "use_logistic_adapted": true,
   "decline": 0.0,
   "Kmin": 1.0,
 
-  "fitness_gain": 0.2,
-  "theta_I": 0.0005,
-  "beta": 0.0004,
+  "fitness_gain": 0,
+  "theta_I": 0.000,
+  "beta": 0.02,
 
   "d1_0": 0.0,
   "d2_0": 0.0,
@@ -46,5 +47,5 @@
   "verbose": true,
   "scale": true,
   "decay": false,
-  "OMEGA": 100
+  "OMEGA": 1
 }

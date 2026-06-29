@@ -5,18 +5,18 @@ import json as _json
 _CELL_TYPE_MAP: dict[str, dict[str, str]] = {
     "base": {
         "N": "N0",
-        "lambda": "lambda0",
+        "lambda_0": "lambda0",
         "mu": "mu0",
         "nu": "nu0",
         "K": "K0",
     },
     "immune": {
         "N": "N_immune",
-        "lambda": "lambda_Immune",
-        "mu": "mu_Immune",
+        "lambda_0": "lambda_Immune",
+        "mu": "omega_exhaust",
         "K": "K_immune",
     },
-    "mutant": {
+    "mutated": {
         "N": "N_mutant",
         "K": "K_mutant",
     },
