@@ -96,6 +96,7 @@ class TissueState:
                 "re": clone.exhaustion_rate,
                 "instability": clone.instability,
                 "buildup": clone.buildup,
+                "K": clone.K
             }
             for cid, clone in self.clones.items()
         }

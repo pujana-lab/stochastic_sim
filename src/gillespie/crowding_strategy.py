@@ -27,6 +27,9 @@ class CrowdingStrategy(ABC):
         # Si Kt es infinito, numerator_N / inf = 0.0 -> crowding devuelve 1.0 (sin freno)
         if math.isinf(Kt):
             return 1.0
+        
+        if (1.0 - numerator_N /Kt) > 1:
+            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa")
             
         # Al asegurar numéricamente que Kt >= 1.0 a través de K_min, eliminamos riesgos de ZeroDivisionError
         return max(0.0, 1.0 - numerator_N / Kt)

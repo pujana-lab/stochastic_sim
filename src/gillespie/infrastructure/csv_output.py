@@ -89,3 +89,20 @@ def save_debug_history_csv(
                     event_kind,
                     event_clone_type,
                 ])
+def save_rates_history_csv(path: Path, rates_history: List[List[Dict]]) -> None:
+    """
+    Guarda el histórico de tasas asumiendo que el tiempo 't' ya está en los datos.
+    """
+    with path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["time", "kind", "clone_id", "clone_type", "rate"])
+        
+        for step_events in rates_history:
+            for event in step_events:
+                writer.writerow([
+                    event["time"],  # Extraemos 'time' directamente del diccionario
+                    event["kind"], 
+                    clone_id_to_str(event["clone_id"]), 
+                    event["clone_type"], 
+                    event["rate"]
+                ])
