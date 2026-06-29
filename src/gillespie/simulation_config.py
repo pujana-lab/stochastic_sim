@@ -14,6 +14,7 @@ class CellTypeConfig:
     mu: float = 0.002
     nu: float = 0.0
     omega_exhaust: float = 0.0
+    fitness_gain: float = 0.0
     next_mutation: str = ""
 
 #TODO: Arreglar este lio. Me gustaria poder meterle los inputs a simulation config de los clones que voy a usar que esten definidos ya fuera y luego al crear las subclases que cada una use el suyo. asi cada subclase tiene sus N,K,birth_rate etc
@@ -21,14 +22,14 @@ class CellTypeConfig:
 _DEFAULT_CELL_PARAMETERS = {
     "base": CellTypeConfig(
         default_id= (),
-        N=100,
+        N=0,
         K=1,
-        nu=0.0002,
+        nu=0.0,
         next_mutation= "mutated"
     ),
     "immune": CellTypeConfig(
         default_id= (-1,),
-        N=50,
+        N=0,
         K=0.5,
         lambda0= 0.005,
         omega_exhaust=0.003,
@@ -36,6 +37,7 @@ _DEFAULT_CELL_PARAMETERS = {
     ),
     "mutated": CellTypeConfig(
         default_id= (-3,),
+        fitness_gain= 0.2, 
         N=10,
         K=2,
     ),
@@ -57,14 +59,14 @@ class SimulationConfig:
    
  
     # simulation control
-    T_max: float = 2000
+    T_max: float = 10000
     seed: Optional[int] = None
 
    
     decline: float = 0.0
     Kmin: float = 1
 
-    fitness_gain: float = 0.2
+    
 
     # interaction parameters
     theta_I: float = 0.0005  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
@@ -104,6 +106,7 @@ class SimulationConfig:
             new_cell_params = {}
             for cell_type, config in self.cell_parameters.items():
                 if config.K is not None:
+                    lambda0 = config.lambda0 * (1 + config.fitness_gain)
                     scaled_K = int(np.ceil(config.K * self.OMEGA))
                     scaled_omega_eshaust = config.omega_exhaust / self.OMEGA if config.omega_exhaust is not 0.0 else config.omega_exhaust
                     # Crear nuevo CellTypeConfig con K escalado
@@ -111,7 +114,7 @@ class SimulationConfig:
                         default_id= config.default_id,
                         N=config.N,
                         K=scaled_K,
-                        lambda0=config.lambda0,
+                        lambda0=lambda0,
                         mu=config.mu,
                         nu=config.nu,
                         omega_exhaust=scaled_omega_eshaust,

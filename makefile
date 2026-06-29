@@ -83,3 +83,8 @@ activate_venv:
 
 install-notebook:
 	pip install -e .
+
+gillespie-plot:
+	python src/gillespie/infrastructure/cli.py
+	python notebooks/visualization/plot_pops_by_type.py
+	python notebooks/visualization/plotear_populations.py

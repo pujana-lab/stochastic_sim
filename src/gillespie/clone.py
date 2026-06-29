@@ -102,7 +102,6 @@ class WildTypeClone(Clone, clone_type = "base"):
 class MutatedClone(Clone, clone_type = "mutated"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.birth_rate = self.cell_parameters.lambda0 * (1.0 + self.config.fitness_gain)
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return tissue_state.pop_map.get("mutated", 0)
