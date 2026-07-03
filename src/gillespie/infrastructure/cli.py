@@ -25,6 +25,7 @@ def main() -> None:
 
     sim = TumorSimulation(config=config)
     input("press any key to continue")
+    print("Starting...")
     #TODO: mover los writers a dentro del simulador
     times, history, tissue_state,rates_history = sim.run()
 # las mierdas que tengo que hacer para guardar un csv son locas. 

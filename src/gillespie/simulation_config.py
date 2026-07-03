@@ -22,7 +22,7 @@ _DEFAULT_CELL_PARAMETERS = {
         default_id= (),
         N=100,
         K=1,
-        nu=0.000002,
+        nu=0.00002,
         next_mutation= "mutated"
     ),
     "immune": CellTypeConfig(
@@ -57,7 +57,7 @@ class SimulationConfig:
    
  
     # simulation control
-    T_max: float = 200
+    T_max: float = 6000
     seed: Optional[int] = None
 
    
