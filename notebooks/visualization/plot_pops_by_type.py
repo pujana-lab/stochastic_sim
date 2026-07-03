@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-
+#TODO: COnvertir en funcion para que me saque solo la figura y luego llamarla desde fuera y guardarlo como quiera 
 file_path = 'history.csv'
 
 dtypes = {

@@ -5,6 +5,8 @@ import numpy as np
 
 if TYPE_CHECKING:
     from src.gillespie.crowding_strategy import CrowdingStrategy
+#TODO: poder pasarle el CEllTypeConfig al cli y al json y tal porque ahora mismo esta desactualizado.
+#TODO: implementar que si N es inf en el postinit define N como el valor de saturacion homeostatica (corresponde a la scaled_K)
 @dataclass(frozen=True)
 class CellTypeConfig:
     default_id: CloneId = None
@@ -20,14 +22,14 @@ class CellTypeConfig:
 _DEFAULT_CELL_PARAMETERS = {
     "base": CellTypeConfig(
         default_id= (),
-        N=100,
+        N=4000,
         K=1,
         nu=0.00002,
         next_mutation= "mutated"
     ),
     "immune": CellTypeConfig(
         default_id= (-1,),
-        N=50,
+        N=2000,
         K=0.5,
         lambda0= 0.005,
         omega_exhaust=0.003,
@@ -36,7 +38,7 @@ _DEFAULT_CELL_PARAMETERS = {
     "mutated": CellTypeConfig(
         default_id= (-3,),
         fitness_gain= 0.2, 
-        N=2,
+        N=0,
         K=2,
     ),
     "exhausted": CellTypeConfig(

@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 file_path = "history.csv"
+#TODO: same as other: COnvertir en funcion para que me saque solo la figura y luego llamarla desde fuera y guardarlo como quiera 
 
 dtypes = {
     'time': 'float64',
