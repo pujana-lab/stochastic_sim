@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--save-history", type=Path, default=Path("./history.csv"), help="Write long-format history CSV.")
     p.add_argument("--save-clones", type=Path, default=None, help="Write final clone states CSV.")
-    p.add_argument("--save-debug", type=Path, default=None, help="Write full debug trace CSV (all fields + event).")
+    p.add_argument("--save-debug", type=Path, default=Path("./debug.csv"), help="Write full debug trace CSV (all fields + event).")
     p.add_argument("--top", type=int, default=10, help="How many largest final clones to print.")
 
     return p

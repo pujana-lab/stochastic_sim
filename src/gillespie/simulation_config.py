@@ -14,16 +14,15 @@ class CellTypeConfig:
     mu: float = 0.002
     nu: float = 0.0
     omega_exhaust: float = 0.0
+    fitness_gain: float = 0.0
     next_mutation: str = ""
 
-#TODO: Arreglar este lio. Me gustaria poder meterle los inputs a simulation config de los clones que voy a usar que esten definidos ya fuera y luego al crear las subclases que cada una use el suyo. asi cada subclase tiene sus N,K,birth_rate etc
-# Defaults estáticos
 _DEFAULT_CELL_PARAMETERS = {
     "base": CellTypeConfig(
         default_id= (),
         N=100,
         K=1,
-        nu=0.0002,
+        nu=0.00002,
         next_mutation= "mutated"
     ),
     "immune": CellTypeConfig(
@@ -36,7 +35,8 @@ _DEFAULT_CELL_PARAMETERS = {
     ),
     "mutated": CellTypeConfig(
         default_id= (-3,),
-        N=10,
+        fitness_gain= 0.2, 
+        N=2,
         K=2,
     ),
     "exhausted": CellTypeConfig(
@@ -57,14 +57,14 @@ class SimulationConfig:
    
  
     # simulation control
-    T_max: float = 2000
+    T_max: float = 6000
     seed: Optional[int] = None
 
    
     decline: float = 0.0
     Kmin: float = 1
 
-    fitness_gain: float = 0.2
+    
 
     # interaction parameters
     theta_I: float = 0.0005  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
@@ -89,39 +89,91 @@ class SimulationConfig:
     
     # Crowding strategy (será inicializado en __post_init__)
     crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)
-    
-    
     def __post_init__(self):
-        """Scale interaction parameters by OMEGA and initialize crowding strategy"""
+        """Initialize configuration: scale parameters and set up strategies."""
+        self._initialize_crowding_strategy()
         if self.scale:
-            object.__setattr__(self, 'beta', self.beta / self.OMEGA)
-            object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
-             # Initialize crowding strategy (after K values are calculated)
-            from src.gillespie.crowding_strategy import SimpleCrowding, AdaptedCrowding
-            strategy_class = AdaptedCrowding if self.use_logistic_adapted else SimpleCrowding
-            object.__setattr__(self, 'crowding_strategy', strategy_class(self))
-            # Escalar K para cada tipo de célula
-            new_cell_params = {}
-            for cell_type, config in self.cell_parameters.items():
-                if config.K is not None:
-                    scaled_K = int(np.ceil(config.K * self.OMEGA))
-                    scaled_omega_eshaust = config.omega_exhaust / self.OMEGA if config.omega_exhaust is not 0.0 else config.omega_exhaust
-                    # Crear nuevo CellTypeConfig con K escalado
-                    new_config = CellTypeConfig(
-                        default_id= config.default_id,
-                        N=config.N,
-                        K=scaled_K,
-                        lambda0=config.lambda0,
-                        mu=config.mu,
-                        nu=config.nu,
-                        omega_exhaust=scaled_omega_eshaust,
-                        next_mutation=config.next_mutation,
-                    )
-                    new_cell_params[cell_type] = new_config
-                else:
-                    new_cell_params[cell_type] = config
-            
-            object.__setattr__(self, 'cell_parameters', new_cell_params)
+            self._scale_interaction_parameters()
+            self._scale_cell_parameters()
         
-       
     
+    # ─────────────────────────────────────────────────────────────────────────
+    # Private initialization methods (called from __post_init__)
+    # ─────────────────────────────────────────────────────────────────────────
+    
+    def _scale_interaction_parameters(self) -> None:
+        """Scale beta and theta_I by OMEGA for population-level dynamics."""
+        object.__setattr__(self, 'beta', self.beta / self.OMEGA)
+        object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
+    
+    def _scale_cell_parameters(self) -> None:
+        """Scale parameters for each cell type.
+        
+        Processes ALL cell types consistently:
+        - Always scales: lambda0 (with fitness gain), omega_exhaust
+        - Conditionally scales: K (only if not None)
+        
+        This ensures scalability: if new parameters need scaling in the future,
+        just add the logic to _create_scaled_cell_config().
+        """
+        scaled_params = {}
+        for cell_type, config in self.cell_parameters.items():
+            scaled_params[cell_type] = self._create_scaled_cell_config(config)
+        
+        object.__setattr__(self, 'cell_parameters', scaled_params)
+    
+    def _create_scaled_cell_config(self, config: CellTypeConfig) -> CellTypeConfig:
+        """Create a new CellTypeConfig with scaled parameters.
+        
+        Scaling logic:
+        - lambda0: Always scaled with fitness gain applied
+        - omega_exhaust: Always scaled (preserves zero values)
+        - K: Only scaled if not None (check happens here)
+        
+        This separation makes it easy to add new scalable parameters later.
+        """
+        lambda0 = config.lambda0 * (1 + config.fitness_gain)
+        scaled_omega_exhaust = self._scale_omega_exhaust(config.omega_exhaust)
+        scaled_K = self._scale_K(config.K) if config.K is not None else None
+        
+        return CellTypeConfig(
+            default_id=config.default_id,
+            N=config.N,
+            K=scaled_K,
+            lambda0=lambda0,
+            mu=config.mu,
+            nu=config.nu,
+            omega_exhaust=scaled_omega_exhaust,
+            next_mutation=config.next_mutation,
+        )
+    
+    def _scale_K(self, K: float | int) -> int:
+        """Scale carrying capacity by OMEGA.
+        
+        Called only when K is not None. Separated for clarity and potential
+        future modifications to scaling logic.
+        """
+        return int(np.ceil(K * self.OMEGA))
+    
+    def _scale_omega_exhaust(self, omega_exhaust: float) -> float:
+        """Scale omega_exhaust by OMEGA, preserving zero values.
+        
+        Always called, but handles the special case where omega_exhaust=0.0
+        should remain 0.0 (not divide by OMEGA).
+        """
+        if omega_exhaust == 0.0:
+            return omega_exhaust
+        return omega_exhaust / self.OMEGA
+    
+    def _initialize_crowding_strategy(self) -> None:
+        """Initialize crowding strategy based on configuration.
+        
+        Separated for clarity: strategy initialization is independent of
+        parameter scaling and can be tested/modified separately.
+        """
+        from src.gillespie.crowding_strategy import SimpleCrowding, AdaptedCrowding
+        
+        strategy_class = AdaptedCrowding if self.use_logistic_adapted else SimpleCrowding
+        object.__setattr__(self, 'crowding_strategy', strategy_class(self))
+ 
+

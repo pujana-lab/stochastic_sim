@@ -44,7 +44,12 @@ class TumorSimulation:
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
-        self.events: List[Optional[Event]] = [None]
+        self.rate_history: List[List[Dict]] = []
+        self.events: List[Optional[Event]] = [] #esto para que lo usamos???
+        rates0=self._build_rate_matrix()
+        print("STARTING RATES AND STATE")
+        self.tissue_state.print_pop_map()
+        self.print_event_table(rates0.events)
 
 
     #TODO: esto huele feo
@@ -80,17 +85,19 @@ class TumorSimulation:
         for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
+            
+            #BUG: aqui estamos mezclando dos logicas. Por una parte estamos asignando por clon y por otra parte por tipo. si hacemos por tipo deberiamos iterar por tipo si no por clon porque si no clones del mismo tipo cuentan varias veces sus rates. 
+            # Hay que decidir que hacemos con esto. si hacemos que todos los clones tengan la misma dinamica entonces no sabemos que clon estamos mutando y si diferenciamos tenemos que volver a calcular todo por cada clon. una opcion es hacer un refacotr y en dos partes primero calcular los rates basales y de cada fenotipo y luego ir por cada clon y multiplicarlos por el numero de clones que tenemos. esta logica se podria guardar en tissue stste de forma que los rates basales se calculen y luego el rate matrix pulee de ahi. 
+            
+            #TODO: est hay que meterlo a tissue_state para poder pintar en condiciones los rates REALES
+            type_rates: tuple[float,float,float,float]= (
+                clone.birth_rate_effective(tissue_state=self.tissue_state),
+                clone.death_rate_effective(tissue_state=self.tissue_state),
+                clone.mutation_rate_effective(tissue_state=self.tissue_state),
+                clone.exhaustion_rate_effective(tissue_state=self.tissue_state),
+            )
 
-            clone_type = clone.get_type()
-            if clone_type not in type_rates:
-                type_rates[clone_type] = (
-                    clone.birth_rate_effective(tissue_state=self.tissue_state),
-                    clone.death_rate_effective(tissue_state=self.tissue_state),
-                    clone.mutation_rate_effective(tissue_state=self.tissue_state),
-                    clone.exhaustion_rate_effective(tissue_state=self.tissue_state),
-                )
-
-            rb, rd, rm, re = type_rates[clone_type]
+            rb, rd, rm, re = type_rates
 
             if rb > 0:
                 rate_matrix.add_event(
@@ -132,8 +139,6 @@ class TumorSimulation:
         clone.kill()
     
     def _induce_exhaustion(self, clone: Clone) -> None:
-        if self.config.verbose == True:
-            print(clone.clone_id)
         self.tissue_state.clones[clone.clone_id].kill()
         self.tissue_state.clones[(-2,)].divide()
     
@@ -149,17 +154,48 @@ class TumorSimulation:
             self._induce_exhaustion(clone)
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
+        
+
+    def print_event_table(self,events: List[Event]):
+        """
+        Imprime una tabla formateada con los eventos de la matriz de tasas.
+        """
+        # Cabecera de la tabla
+        header = f"{'Kind':<12}  | {'Type':<12}| {'Clone ID':<15} | {'Rate':<10} | {'N':<15}"
+        print(header)
+        print("-" * len(header))
+        
+        # Filas
+        for e in events:
+            # e.clone_id suele ser una tupla, la convertimos a string para que quepa bien
+            id_str = str(e.clone_id)
+            print(f"{e.kind.name:<12} | {e.clone_type:<12} | {id_str:<15} | {e.rate:<10.4f}| {self.tissue_state.clones[e.clone_id].N}")
+        
+        print("-" * len(header))
 
     # ── Public API ────────────────────────────────────────────────────────────
 
     def total_population(self) -> int:
         return self.tissue_state.total_population()
 
-    def step(self) -> bool:
+    def step(self, return_matrix: Optional[bool] = False) -> bool:
         """Advance by one Gillespie step. Returns False when simulation should stop."""
         rate_matrix = self._build_rate_matrix()
+  
+        if return_matrix == True:
+            print(self.t)
+            self.print_event_table(events = rate_matrix.events)
         total_rate = rate_matrix.get_total_rate()
-
+        step_rates = [
+            {
+                "time": self.t,
+                "kind": e.kind.name,
+                "clone_id": e.clone_id,
+                "clone_type": e.clone_type,
+                "rate": e.rate,
+            } for e in rate_matrix.events
+        ]
+        self.rate_history.append(step_rates)
         if total_rate <= 0 or not rate_matrix.events:
             return False
 
@@ -172,6 +208,10 @@ class TumorSimulation:
             self.t = self.config.T_max
             self.times.append(self.t)
             self.history.append(self.tissue_state.snapshot())
+            print("FINAL RATES AND STATE")
+            self.tissue_state.print_pop_map()
+            self.print_event_table(events=rate_matrix.events)
+            
             return False
 
         self._advance_all_instability(tau)
@@ -185,19 +225,20 @@ class TumorSimulation:
         self.times.append(self.t)
         self.tissue_state.t = self.t
         self.history.append(self.tissue_state.snapshot())
+
         #TODO: revisar esto, no entiendo por que le volvemos a pasar el event al hacer el step, es para luego sacarlo en el debugger? porque si no no le veo el sentido.
         self.events.append(event)
-        if self.config.verbose:
-            if event.clone_type == "mutated" or event.clone_type == "immune":
-                    print("-------------------")
-                    print(f"time:{self.t}" )
-                    print(f"EVENT: {event.kind.value}")
-                    print(f"KIND: {event.clone_type} ")
-                    self.tissue_state.print_pop_map()
-                    print("-------------------")
+        # if self.config.verbose:
+        #     if event.clone_type == "mutant" or event.clone_type == "immune":
+        #             print("-------------------")
+        #             print(f"time:{self.t}" )
+        #             print(f"EVENT: {event.kind.value}")
+        #             print(f"KIND: {event.clone_type} ")
+        #             self.tissue_state.print_pop_map()
+        #             print("-------------------")
                 
         return True
-    
+        
     def _stopping_cond(self) -> bool:
         """" We will make the system stop if it reaches stability"""
 
@@ -229,4 +270,4 @@ class TumorSimulation:
         while not self._stopping_cond():
             if not self.step():
                 break
-        return self.times, self.history, self.tissue_state
+        return self.times, self.history, self.tissue_state, self.rate_history

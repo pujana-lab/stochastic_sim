@@ -60,18 +60,18 @@ class Clone:
 
     def mutation_multiplier(self) -> float:
         return 1.0 + self.instability
-
+    #BUG: related to bug in tumor_simulation.py ahora mismo el birth rate va por tipo y no por clon. lo cual esta double counting 
     def birth_rate_effective(self,tissue_state: "TissueState") -> float:
-        return self.birth_rate * tissue_state.pop_map.get(self.get_type(),0) * self.config.crowding_strategy.crowding(self,tissue_state=tissue_state)
+        return self.birth_rate * self.N * self.config.crowding_strategy.crowding(self,tissue_state=tissue_state) #NO ESTABA MULTIPLICANDO POR EL BIRTH RATE!!!
 
     def death_rate_effective(self,tissue_state: "TissueState") -> float:
-        return self.death_rate * tissue_state.pop_map.get(self.get_type(),0)
+        return self.death_rate * self.N
 
     def mutation_rate_effective(self,tissue_state: "TissueState") -> float:
-        return self.mutation_rate * tissue_state.pop_map.get(self.get_type()) * self.mutation_multiplier()
+        return self.mutation_rate * self.N * self.mutation_multiplier()
 
     def exhaustion_rate_effective(self,tissue_state: "TissueState") -> float:
-        return self.exhaustion_rate * tissue_state.pop_map.get(self.get_type())
+        return self.exhaustion_rate * self.N
         
     def divide(self) -> None:
         self.N += 1
@@ -102,7 +102,6 @@ class WildTypeClone(Clone, clone_type = "base"):
 class MutatedClone(Clone, clone_type = "mutated"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.birth_rate = self.cell_parameters.lambda0 * (1.0 + self.config.fitness_gain)
 
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return tissue_state.pop_map.get("mutated", 0)
@@ -114,7 +113,7 @@ class MutatedClone(Clone, clone_type = "mutated"):
         (theta_I is a global parameter from config)
         """
         base_death = super().death_rate_effective(tissue_state)
-        self_n = tissue_state.pop_map.get("mutated", 0)
+        self_n = self.N
         n_immune = tissue_state.pop_map.get("immune", 0)
         immune_killing = self_n * n_immune * self.config.theta_I
         return base_death + immune_killing
@@ -137,7 +136,7 @@ class ImmuneClone(Clone, clone_type = "immune"):
         (beta is a global parameter from config)
         """
         base_birth = super().birth_rate_effective(tissue_state)
-        n_self = tissue_state.pop_map.get("immune", 0)
+        n_self = self.N
         n_cancer = tissue_state.pop_map.get("mutated", 0)
         activation_boost = n_self * n_cancer * self.config.beta
         # crowding_effect= #crowding donde tenemos que el numerador de la logistica es n_exhausted+sel
