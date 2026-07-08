@@ -51,7 +51,7 @@ _DEFAULT_CELL_PARAMETERS = {
 @dataclass(frozen=True)
 class SimulationConfig:
 
-    OMEGA: int = 4000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
+    OMEGA: int = 100000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
     
     #TODO: IMPORTANTE: Mover los parametros de las celulas de flat a por tipo. que tengan un string acorde con el tipo y se puedan acceder al crear celulas como my_defaults=self.config.params("cell_type") y luego hacer birth_rate=my_defaults.lambda0
@@ -59,7 +59,7 @@ class SimulationConfig:
    
  
     # simulation control
-    T_max: float = 6000
+    T_max: float = 1000
     seed: Optional[int] = None
 
    
@@ -88,6 +88,8 @@ class SimulationConfig:
     decay: bool = False
     use_logistic: bool = True  # ESTO SIEMPRE TIENE QUE SER TRUE O EL CRECIMIENTO EXPONENCIAL EXPLOTA
     use_logistic_adapted: bool = True
+    save_all_steps: bool = True
+    save_interval: int = 0
     
     # Crowding strategy (será inicializado en __post_init__)
     crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)

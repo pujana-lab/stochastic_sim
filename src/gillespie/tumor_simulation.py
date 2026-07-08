@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from tqdm import tqdm
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.tissue_state import TissueState
@@ -16,11 +17,16 @@ from src.gillespie.clone_factory import CloneFactory
 class TumorSimulation:
     def __init__(self, config: SimulationConfig) -> None:
         self.config = config
+        self.save_all_steps = config.save_all_steps
+        self.save_interval = config.save_interval if config.save_interval > 0 else (1 if config.save_all_steps else 0)
+        self.step_count = 0
         self.rng = np.random.default_rng(config.seed)
         self.clone_factory = CloneFactory(config)
         self.t = 0.0
         print("arrancando con parametros:")
         print(config)
+        if self.save_interval == 0:
+            print(f"Memory mode: minimal (only final state). Use save_all_steps=True to save all steps.")
         
         #aqui igual merece mas la pena guardarlo como array simplemente o eso o hacerlo por tipos pero en ese caso 
         # Initialize clones
@@ -37,15 +43,13 @@ class TumorSimulation:
         # Encapsulate tissue state
         self.tissue_state: TissueState = TissueState(t= self.t, clones=clones_dict)
 
-
-
         # Use crowding strategy from config (initialized in SimulationConfig.__post_init__)
         self.crowding_strategy: CrowdingStrategy = self.config.crowding_strategy
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
-        self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()]
-        self.rate_history: List[List[Dict]] = []
-        self.events: List[Optional[Event]] = [] #esto para que lo usamos???
+        self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()] if self.save_interval > 0 else []
+        self.rate_history: List[List[Dict]] = [] if self.save_interval > 0 else []
+        self.events: List[Optional[Event]] = [] if self.save_all_steps else []
         rates0=self._build_rate_matrix()
         print("STARTING RATES AND STATE")
         self.tissue_state.print_pop_map()
@@ -180,22 +184,27 @@ class TumorSimulation:
 
     def step(self, return_matrix: Optional[bool] = False) -> bool:
         """Advance by one Gillespie step. Returns False when simulation should stop."""
+        self.step_count += 1
         rate_matrix = self._build_rate_matrix()
   
         if return_matrix == True:
             print(self.t)
             self.print_event_table(events = rate_matrix.events)
         total_rate = rate_matrix.get_total_rate()
-        step_rates = [
-            {
-                "time": self.t,
-                "kind": e.kind.name,
-                "clone_id": e.clone_id,
-                "clone_type": e.clone_type,
-                "rate": e.rate,
-            } for e in rate_matrix.events
-        ]
-        self.rate_history.append(step_rates)
+        
+        # Only record rates if saving history
+        if self.save_interval > 0:
+            step_rates = [
+                {
+                    "time": self.t,
+                    "kind": e.kind.name,
+                    "clone_id": e.clone_id,
+                    "clone_type": e.clone_type,
+                    "rate": e.rate,
+                } for e in rate_matrix.events
+            ]
+            self.rate_history.append(step_rates)
+        
         if total_rate <= 0 or not rate_matrix.events:
             return False
 
@@ -207,6 +216,7 @@ class TumorSimulation:
             self._advance_all_instability(tau)
             self.t = self.config.T_max
             self.times.append(self.t)
+            # Always save final state
             self.history.append(self.tissue_state.snapshot())
             print("FINAL RATES AND STATE")
             self.tissue_state.print_pop_map()
@@ -221,21 +231,16 @@ class TumorSimulation:
         self._apply_event(event)
         self.tissue_state.update_pop_map()
         
-
         self.times.append(self.t)
         self.tissue_state.t = self.t
-        self.history.append(self.tissue_state.snapshot())
-
-        #TODO: revisar esto, no entiendo por que le volvemos a pasar el event al hacer el step, es para luego sacarlo en el debugger? porque si no no le veo el sentido.
-        self.events.append(event)
-        # if self.config.verbose:
-        #     if event.clone_type == "mutant" or event.clone_type == "immune":
-        #             print("-------------------")
-        #             print(f"time:{self.t}" )
-        #             print(f"EVENT: {event.kind.value}")
-        #             print(f"KIND: {event.clone_type} ")
-        #             self.tissue_state.print_pop_map()
-        #             print("-------------------")
+        
+        # Save snapshots conditionally
+        if self.save_interval > 0 and self.step_count % self.save_interval == 0:
+            self.history.append(self.tissue_state.snapshot())
+        
+        # Save events if recording all steps
+        if self.save_all_steps:
+            self.events.append(event)
                 
         return True
         
@@ -267,7 +272,10 @@ class TumorSimulation:
         return False
 
     def run(self) -> Tuple[List[float], List[Dict[CloneId, dict]], TissueState]:
-        while not self._stopping_cond():
-            if not self.step():
-                break
+        with tqdm(desc="Simulating", unit=" steps") as pbar:
+            while not self._stopping_cond():
+                if not self.step():
+                    break
+                pbar.update(1)
+                pbar.set_postfix({"time": f"{self.t:.2f}/{self.config.T_max:.2f}"})
         return self.times, self.history, self.tissue_state, self.rate_history
