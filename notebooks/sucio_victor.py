@@ -2,21 +2,21 @@ from typing import Dict, Type
 
 
 class Clone:
-    # El registro central y único
+    # The central, single registry
     _registry: Dict[str, Type["Clone"]] = {}
 
     def __init__(self, nombre: str):
         self.nombre = nombre
-        # Cada vez que nace un clon, se anota a sí mismo (o a su clase) en la central
+        # Every time a clone is created, it registers itself (or its class) in the central registry
         Clone._registry[nombre] = type(self)
 
 
-# 1. Creamos el primer clon
+# 1. Create the first clone
 clon_1 = Clone("Alfa")
-print(clon_1._registry)  # Resultado: {'Alfa': <class 'Clone'>}
+print(clon_1._registry)  # Result: {'Alfa': <class 'Clone'>}
 
-# 2. Creamos un segundo clon más tarde
+# 2. Create a second clone later
 clon_2 = Clone("Beta")
 
-# 3. ¿Qué ve el primer clon ahora?
-print(clon_1._registry)  # Resultado: {'Alfa': <class 'Clone'>, 'Beta': <class 'Clone'>}
+# 3. What does the first clone see now?
+print(clon_1._registry)  # Result: {'Alfa': <class 'Clone'>, 'Beta': <class 'Clone'>}
