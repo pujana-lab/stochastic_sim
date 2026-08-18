@@ -19,7 +19,7 @@ class CellTypeConfig:
     fitness_gain: float = 0.0
     next_mutation: str = ""
 
-_DEFAULT_CELL_PARAMETERS = {
+_DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
     "base": CellTypeConfig(
         default_id= (),
         N=4000,
@@ -51,12 +51,11 @@ _DEFAULT_CELL_PARAMETERS = {
 @dataclass(frozen=True)
 class SimulationConfig:
 
-    OMEGA: int = 100000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
+    OMEGA: int = 4000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
     
     #TODO: IMPORTANTE: Mover los parametros de las celulas de flat a por tipo. que tengan un string acorde con el tipo y se puedan acceder al crear celulas como my_defaults=self.config.params("cell_type") y luego hacer birth_rate=my_defaults.lambda0
-    cell_parameters: dict = field(default_factory=lambda : dict(_DEFAULT_CELL_PARAMETERS))
-   
+    cell_parameters: dict[str, CellTypeConfig] = field(default_factory=lambda : dict(_DEFAULT_CELL_PARAMETERS))
  
     # simulation control
     T_max: float = 1000
@@ -94,12 +93,29 @@ class SimulationConfig:
     # Crowding strategy (será inicializado en __post_init__)
     crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)
     def __post_init__(self):
-        """Initialize configuration: scale parameters and set up strategies."""
+        """Initialize configuration: normalize cell params, scale parameters, and set up strategies."""
+        self._normalize_cell_parameters()
         self._initialize_crowding_strategy()
         if self.scale:
             self._scale_interaction_parameters()
             self._scale_cell_parameters()
-        
+
+#TODO: entender esto 
+    def _normalize_cell_parameters(self) -> None:
+        normalized = {}
+        for cell_type, config in self.cell_parameters.items():
+            if isinstance(config, CellTypeConfig):
+                cfg = config
+            elif isinstance(config, dict):
+                payload = dict(config)
+                if "default_id" not in payload and cell_type in _DEFAULT_CELL_PARAMETERS:
+                    payload["default_id"] = _DEFAULT_CELL_PARAMETERS[cell_type].default_id
+                cfg = CellTypeConfig(**payload)
+            else:
+                raise TypeError(...)
+            normalized[cell_type] = cfg
+
+        object.__setattr__(self, "cell_parameters", normalized)
     
     # ─────────────────────────────────────────────────────────────────────────
     # Private initialization methods (called from __post_init__)
@@ -148,6 +164,7 @@ class SimulationConfig:
             mu=config.mu,
             nu=config.nu,
             omega_exhaust=scaled_omega_exhaust,
+            fitness_gain=config.fitness_gain,
             next_mutation=config.next_mutation,
         )
     

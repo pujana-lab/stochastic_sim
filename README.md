@@ -1,208 +1,290 @@
 # Tumor Gillespie Simulator
 
-Simulación de clones tumorales mediante un algoritmo de Gillespie con eventos de nacimiento, muerte, mutación y agotamiento.
+A stochastic Gillespie-based tumor clone simulator for a simplified tissue model. The implementation in `src/gillespie/` tracks four clone types and computes event rates from clone-specific parameters, crowding, and cell-cell interactions.
 
-## Visión general
+## Overview
 
-Este proyecto modela un tejido con cuatro tipos de clones:
+The simulation models four clone classes:
 
-- `base` (células sanas o normales)
-- `mutated` (células tumorales)
-- `immune` (células inmunes)
-- `exhausted` (células agotadas)
+- `base`: healthy (wild type) cells
+- `mutated`: tumor cells
+- `immune`: immune cells
+- `exhausted`: exhausted immune cells
 
-Cada clon tiene tasas base de nacimiento, muerte, mutación y agotamiento. Las tasas efectivas se calculan en función del estado global del tejido (`TissueState`) y de interacciones entre los tipos celulares.
+Each clone type has its own base parameters defined in `simulation_config.py`. Effective rates use the full tissue state kept in `TissueState` and may include interaction terms between clone types. Code architecture allows for additional clone classes (such as intermediate pre-neoplastic states) to be implemented in a straightforward way.
 
-## Matemáticas del modelo
+## Installation and setup
 
-### Eventos del modelo
+1. Create and activate a Python virtual environment:
 
-El simulador considera los siguientes eventos de Gillespie para cada clon vivo:
+```bash
+python -m venv venv
+source venv/bin/activate
+```
 
-- `BIRTH`: división celular
-- `DEATH`: muerte celular
-- `MUTATION`: creación de un clon mutado hijo
-- `EXHAUSTION`: transformación entre clones inmune/exhaustos
+2. Install the package in editable mode:
 
-### Tasas efectivas por clon
+```bash
+pip install -e .
+```
 
-Para un clon de tipo `i` con población total `N_i` en el estado actual:
+3. Install project dependencies:
 
-- tasa de nacimiento:
-  $$ r^B_i = \lambda_i \, N_i \, C_i(t) $$
-- tasa de muerte:
-  $$ r^D_i = \mu_i \, N_i + I_i(t) $$
-- tasa de mutación:
-  $$ r^M_i = \nu_i \, N_i \, (1 + \text{instability}_i) $$
-- tasa de agotamiento:
-  $$ r^E_i = \epsilon_i \, N_i $$
+```bash
+pip install -r requirements.txt
+```
 
-Aquí `C_i(t)` es el factor de `crowding` y `I_i(t)` es un término de interacción extra dependiente de otros tipos celulares.
+4. If you prefer the Makefile helpers:
 
-#### Crowding
+```bash
+make create_venv
+source venv/bin/activate
+make install-notebook
+```
 
-Las dos estrategias de crowding implementadas son:
+The `requirements.txt` file includes test and notebook dependencies.
+
+## Command line usage
+
+Once the environment is ready, run the Gillespie CLI directly:
+
+```bash
+python src/gillespie/infrastructure/cli.py --help
+```
+
+The CLI accepts the same simulation parameters used by `SimulationConfig`, such as:
+
+```bash
+python src/gillespie/infrastructure/cli.py \
+  --N0 50 \
+  --lambda0 0.25 --mu0 0.25 --nu0 0.0 \
+  --T-max 20 \
+  --seed 42 \
+  --save-history results.csv \
+  --save-debug debug.csv
+```
+
+This will run a Gillespie trajectory and write CSV output for the history and debug information.
+
+## Makefile usage
+
+The repository includes Make targets for common workflows:
+
+- `make test`
+  - run the test suite against `tests`
+- `make test-cov`
+  - run tests with coverage reporting
+- `make create_venv`
+  - create the Python virtual environment `venv`
+- `make install-notebook`
+  - install the package in editable mode
+- `make gillespie-homeostasis`
+  - run a homeostasis scenario
+- `make gillespie-tumour-growth`
+  - run the tumor growth scenario with instability and mutation
+- `make gillespie-crowding`
+  - run the crowding scenario with logistic limits
+- `make gillespie-all`
+  - run all three Gillespie scenarios
+- `make gillespie-plot`
+  - run the CLI and the notebook plotting scripts
+
+After installation, use either the CLI or the Makefile targets depending on whether you want a one-off run or a predefined scenario.
+
+## Model equations
+
+### Event types
+
+Each alive clone can participate in the following events:
+
+- `BIRTH`: one cell divides
+- `DEATH`: one cell dies
+- `MUTATION`: a new mutant clone is created and the parent clone loses one cell
+- `EXHAUSTION`: an immune clone becomes exhausted and one exhausted cell is produced
+
+### Base effective rate formulas
+
+For a clone with population `N`, the base effective rates are:
+
+- birth rate:
+  `r_B = λ · N · C(t)`
+- death rate:
+  `r_D = μ · N`
+- mutation rate:
+  `r_M = ν · N · (1 + instability)`
+- exhaustion rate:
+  `r_E = ω · N`
+
+The crowding factor `C(t)` is computed by `CrowdingStrategy`. If `use_logistic` is disabled, `C(t) = 1`.
+
+### Crowding
+
+Crowding is implemented as:
+
+```
+C(t) = max(0, 1 - N_crowd / K_t)
+```
+
+where:
+
+- `N_crowd` is the competitive population for that clone type
+- `K_t` is the effective carrying capacity
+
+The available strategies are:
 
 - `SimpleCrowding`
+  - computes `K_t = max(K_min, K)`
 - `AdaptedCrowding`
+  - if `λ > μ`: `K_t = max(K_min, ceil(K / (1 - μ / λ)))`
+  - otherwise: `K_t = ∞`
 
-Ambas usan la forma general:
+`AdaptedCrowding` is selected when `use_logistic_adapted=True`.
 
-$$ C_i(t) = \max\left(0, 1 - \frac{N_{crowd}}{K_i(t)} \right) $$
+### Clone-specific interaction terms
 
-con:
-
-- `N_{crowd}`: población competitiva para ese clon
-- `K_i(t)`: capacidad de carga efectiva en tiempo `t`
-
-Para `SimpleCrowding`:
-
-$$ K_i(t) = \max(K_{min}, K_i - decline \cdot t) $$
-
-Para `AdaptedCrowding`:
-
-$$ K_i(t) = \max\left(K_{min}, \frac{K_i}{1 - \mu_i / \lambda_i} - decline \cdot t \right) $$
-
-### Interacciones específicas
+Some clone types modify the base formula with interactions.
 
 #### `MutatedClone`
 
-La muerte efectiva incluye un término inmune:
+Immune killing adds a tumor-immune interaction to death:
 
-$$ r^D_{mut} = \mu_{mut} N_{mut} + N_{mut} N_{immune} \theta_I $$
+```
+r_D(mutated) = μ_mutated · N_mutated + θ_I · N_mutated · N_immune
+```
 
 #### `ImmuneClone`
 
-- nacimiento activo:
-  $$ r^B_{immune} = \lambda_{immune} N_{immune} C_{immune} + N_{immune} N_{mut} \beta $$
-- agotamiento dependiente del tumor:
-  $$ r^E_{immune} = \epsilon_{immune} N_{immune} N_{mut} $$
+Immune birth includes activation by mutated cells:
+
+```
+r_B(immune) = λ_immune · N_immune · C(t) + β · N_immune · N_mutated
+```
+
+Immune exhaustion scales with tumor burden:
+
+```
+r_E(immune) = ω_immune · N_immune · N_mutated
+```
 
 #### `ExhaustedClone`
 
-- no se divide:
-  $$ r^B_{exh} = 0 $$
+Exhausted clones do not divide:
 
-### Evolución de la inestabilidad
+```
+r_B(exhausted) = 0
+```
 
-Cada clon vivo acumula inestabilidad en el tiempo:
+### Instability dynamics (Work in progress)
 
-$$ \mathit{instability}_i(t + \Delta t) = \mathit{instability}_i(t) + (\mathit{base\_instability\_buildup} + \mathit{buildup}_i) \cdot \Delta t $$
+Each clone advances instability each step using:
 
-Esto afecta la tasa de mutación en `MutatedClone` y otros eventos si se extiende el modelo.
+```
+instability += (base_instability_buildup + buildup) · Δt
+```
 
-### Gillespie paso a paso
+The current implementation uses `instability` only to scale mutation rate via `1 + instability`. Instability and buildup parameters are set to 0 by default for the time being until full support is implemented.
 
-En cada paso de la simulación:
+### Gillespie algorithm
 
-1. Actualizar `pop_map` en `TissueState`
-2. Construir la matriz de tasas de eventos (`RateMatrix`)
-3. Sumar la tasa total
-   $$ R = \sum_{j} r_j $$
-4. Muestrear el tiempo hasta el próximo evento:
-   $$ \tau = -\frac{1}{R} \, \ln(u), \quad u \sim U(0,1) $$
-5. Seleccionar un evento proporcional a su tasa
-6. Aplicar el evento al clon elegido
-7. Actualizar el tiempo y guardar un snapshot del estado
+`TumorSimulation` implements the event-driven Gillespie step:
 
-La simulación termina cuando se alcanza `T_max` o no hay más eventos posibles.
+1. Update `TissueState.pop_map`
+2. Build the list of event rates in `RateMatrix`
+3. Compute total rate `R = Σ rate`
+4. Sample waiting time
+   `τ = -log(u) / R`, with `u ∼ Uniform(0, 1)`
+5. Choose one event weighted by event rate
+6. Apply that event to the selected clone
+7. Advance simulation time and record history
 
-## Arquitectura del código
+The run loop stops when the total rate is zero, there are no more events, or `T_max` is reached.
+
+## Code architecture
 
 ### `src/gillespie/simulation_config.py`
 
-Define los parámetros globales del modelo:
+Defines global simulation parameters and default clone-type parameters via `CellTypeConfig`.
 
-- poblaciones iniciales: `N0`, `N_mutant`, `N_immune`, `N_exhausted`
-- tasas base: `lambda0`, `lambda_Immune`, `mu0`, `omega_exhaust`, `mu_Exhausted`, `nu0`
-- parámetros de interacción: `theta_I`, `beta`
-- capacidades: `K0`, `K_immune`, `K_mutant`, `decline`, `Kmin`
-- tiempo máximo: `T_max`
-- parámetros de inestabilidad y fitness
+- scales `beta` and `theta_I` by `OMEGA`
+- scales carrying capacity `K`
+- selects `AdaptedCrowding` or `SimpleCrowding`
 
-### `src/gillespie/clone_factory.py`
-
-Construye los clones iniciales y asigna sus parámetros base según el tipo:
-
-- `base` → `WildTypeClone`
-- `mutated` → `MutatedClone`
-- `immune` → `ImmuneClone`
-- `exhausted` → `ExhaustedClone`
+For simplicity `OMEGA` is chosen to be the homeostatic equilibrium value for WT population and user input values for `K`  for each clone tyoe correspond to fractions of this value. 
 
 ### `src/gillespie/clone.py`
 
-Define la clase base `Clone` y subclases especializadas.
-Cada clon implementa métodos de tasa efectiva que reciben el `TissueState` completo y pueden leer interacciones globales desde `self.config`.
+Defines the `Clone` base class and specialized subclasses:
 
-### `src/gillespie/tissue_state.py`
+- `WildTypeClone` (`base`)
+- `MutatedClone` (`mutated`)
+- `ImmuneClone` (`immune`)
+- `ExhaustedClone` (`exhausted`)
 
-Encapsula el estado actual del tejido:
+Each clone defines:
 
-- `clones: Dict[CloneId, Clone]`
-- `pop_map: Dict[CloneType, int]`
-- `snapshot()` para historial
-- consultas por tipo de clon
+- `birth_rate_effective(tissue_state)`
+- `death_rate_effective(tissue_state)`
+- `mutation_rate_effective(tissue_state)`
+- `exhaustion_rate_effective(tissue_state)`
+- `crowding_numerator(tissue_state)`
 
 ### `src/gillespie/crowding_strategy.py`
 
-Implementa las estrategias de crowding que modifican la tasa de nacimiento.
+Implements logistic crowding. The `crowding()` method computes the current crowding multiplier and the concrete strategy decides the effective carrying capacity.
+
+### `src/gillespie/clone_factory.py`
+
+Creates clone instances from configuration. It supports registered clone types and a special `mutated_test` path used for development.
+
+### `src/gillespie/tissue_state.py`
+
+Encapsulates current clone populations and provides:
+
+- `pop_map` of clone type counts
+- `total_population()`
+- `get_clones_by_type()`
+- `snapshot()` for history
+
+### `src/gillespie/rate_matrix.py`
+
+Collects candidate events and their rates, computes the total rate, and chooses a single event proportional to the rates.
 
 ### `src/gillespie/tumor_simulation.py`
 
-Controla la simulación completa:
+Executes the simulation loop:
 
-- instancia `CloneFactory` y crea el `TissueState`
-- construye la matriz de eventos
-- muestrea tiempos con la fórmula de Gillespie
-- aplica eventos y guarda el historial
+- initializes clones and `TissueState`
+- builds per-clone events every step
+- samples event times and selects events
+- updates state and optional history
 
-## Uso sencillo
+## Usage example
 
 ```python
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
 
 config = SimulationConfig(
-    N0=100,
-    N_mutant=5,
-    N_immune=20,
-    N_exhausted=0,
-    lambda0=0.5,
-    mu0=0.2,
-    nu0=0.01,
-    theta_I=0.001,
-    beta=0.001,
-    K0=1000,
-    K_mutant=1000,
-    K_immune=500,
+    T_max=1000,
+    seed=42,
     use_logistic=True,
     use_logistic_adapted=True,
-    T_max=1000,
 )
 
 sim = TumorSimulation(config)
 results = sim.run()
 ```
 
-## Reescalado de parámetros
-
-Si quieres adaptar el modelo al tamaño del sistema, prepara la configuración antes de crear `TumorSimulation`.
-
-```python
-scaled_config = SimulationConfig(
-    N0=int(base_N0 * scale),
-    K0=int(base_K0 * scale),
-    theta_I=base_theta_I / scale,
-    beta=base_beta / scale,
-    # ... otros parámetros según tu estrategia de escalado
-)
+In order to run a quick test and plot the results one can run:
+```bash
+make gillespie_plot
 ```
+## Important notes
 
-## Consideraciones
-
-- `TissueState` contiene el estado del tejido; no debe mezclar lógica de simulación.
-- El cálculo de tasas y eventos debe realizarse en `TumorSimulation`.
-- Si clones del mismo tipo comparten tasas efectivas, conviene calcularlas una vez por tipo en `_build_rate_matrix()`.
+- `TissueState` stores state and should remain separate from simulation logic.
+- `RateMatrix` is currently a simple event list; it does not implement tau-leap.
+- `MUTATION` events create a new clone of the configured `next_mutation` type.
+- `EXHAUSTION` events kill one source clone and increase the exhausted clone count.
 
 ## Testing
 
@@ -210,7 +292,7 @@ scaled_config = SimulationConfig(
 python -m pytest tests/gillespie
 ```
 
-O:
+or
 
 ```bash
 make test

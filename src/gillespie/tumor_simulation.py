@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
+from numba import optional
 import numpy as np
 from tqdm import tqdm
 from src.gillespie.cloneId import CloneId
@@ -92,6 +93,7 @@ class TumorSimulation:
             
             #BUG: aqui estamos mezclando dos logicas. Por una parte estamos asignando por clon y por otra parte por tipo. si hacemos por tipo deberiamos iterar por tipo si no por clon porque si no clones del mismo tipo cuentan varias veces sus rates. 
             # Hay que decidir que hacemos con esto. si hacemos que todos los clones tengan la misma dinamica entonces no sabemos que clon estamos mutando y si diferenciamos tenemos que volver a calcular todo por cada clon. una opcion es hacer un refacotr y en dos partes primero calcular los rates basales y de cada fenotipo y luego ir por cada clon y multiplicarlos por el numero de clones que tenemos. esta logica se podria guardar en tissue stste de forma que los rates basales se calculen y luego el rate matrix pulee de ahi. 
+            #TODO: hay que volver a poner los rates por TIPO y simplemente a la hora de aplicar el evento tirar moneda para elegir cual clon de ese tipo prolifera/muere
             
             #TODO: est hay que meterlo a tissue_state para poder pintar en condiciones los rates REALES
             type_rates: tuple[float,float,float,float]= (
@@ -131,7 +133,7 @@ class TumorSimulation:
         assert clone.is_alive(), "Cannot mutate a dead clone."
         
         # Validate that the next mutation type exists in CloneType
-        assert clone.next_mutation is not "", "Clone is not supposed to be mutating"
+        assert clone.next_mutation != "", "Clone is not supposed to be mutating"
         
         
         self.create_clone(
@@ -220,7 +222,7 @@ class TumorSimulation:
             self.history.append(self.tissue_state.snapshot())
             print("FINAL RATES AND STATE")
             self.tissue_state.print_pop_map()
-            self.print_event_table(events=rate_matrix.events)
+            # self.print_event_table(events=rate_matrix.events)
             
             return False
 
