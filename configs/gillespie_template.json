@@ -1,15 +1,15 @@
 {
   "cell_parameters": {
     "base": {
-      "N": 30,
+      "N": 4000,
       "K": 1,
       "lambda0": 0.005,
       "mu": 0.002,
-      "nu": 0.002,
+      "nu": 0.00002,
       "next_mutation": "mutated"
     },
     "immune": {
-      "N": 15,
+      "N": 2000,
       "K": 0.5,
       "lambda0": 0.005,
       "omega_exhaust": 0.003,
@@ -25,7 +25,8 @@
       "lambda0": 0.0
     }
   },
-  "T_max": 6000,
+  "OMEGA": 4000,
+  "T_max": 1000,
   "seed": null,
   "decline": 0.0,
   "Kmin": 1,
@@ -44,6 +45,5 @@
   "use_logistic": true,
   "use_logistic_adapted": true,
   "save_all_steps": true,
-  "save_interval": 0,
-  "OMEGA": 400
+  "save_interval": 0
 }

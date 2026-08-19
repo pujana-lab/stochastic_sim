@@ -2,19 +2,6 @@
 
 A stochastic Gillespie-based tumor clone simulator for a simplified tissue model. The implementation in `src/gillespie/` tracks four clone types and computes event rates from clone-specific parameters, crowding, and cell-cell interactions.
 
-This simulator implements the individual-clone, discrete-population extension of a deterministic three-population model of *BRCA1*-driven tumor initiation (tumor clone, active immune, exhausted immune), developed as part of the Pujana Lab's mathematical modeling framework for hereditary breast cancer initiation. It is designed to resolve the fate of single newly arisen mutant clones under stochastic fluctuation, a regime the deterministic mean-field limit cannot capture. It is intended to be coupled with [`cellSim`](https://github.com/pujana-lab/cellSim), an individual-based model of genomic-instability accumulation and TP53-gated apoptosis, via the `instability` term in the mutation rate below.
-
-## Status and current codebase
-
-This repository contains two coexisting implementations:
-
-- **`src/gillespie/`** — current, actively developed Gillespie SSA (event-driven, CSV output). This is what the rest of this README documents and what new work should build on.
-- **`main.py` + `preliminar/`** — earlier "Moran" model implementation (YAML-configured, XLSX output), kept for reference but not under active development.
-
-Known open items: three test files under `tests/gillespie/` are currently broken, `tests/gillespie/test_clone_factory.py` is a placeholder (empty), and the CLI does not yet pass through custom config arguments (it always builds a default `SimulationConfig()`). See `AGENTS.md` for the full working-notes list.
-
-> **Cleanup needed:** the repository root currently contains a file named `cellSim` that is a broken symlink to a local path (`/home/luis/CLionProjects/cellSim`) rather than a real file or submodule. It should be removed (`git rm cellSim && git commit`) and, if a link to the actual `cellSim` repo is wanted, replaced with a link in this README instead (see above) or a proper git submodule.
-
 ## Overview
 
 The simulation models four clone classes:
@@ -310,8 +297,3 @@ or
 ```bash
 make test
 ```
-
-## Related work
-
-- [`cellSim`](https://github.com/pujana-lab/cellSim) — individual-based model of genomic-instability accumulation and TP53-gated apoptosis; intended calibration source for the `instability` term above.
-- Deterministic three-population model (tumor / active immune / exhausted immune) providing the mean-field limit this simulator extends, developed within the Pujana Lab's mathematical modeling of *BRCA1*-related breast cancer initiation.

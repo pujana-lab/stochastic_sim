@@ -1,28 +1,28 @@
-# Developer notes
+# Moran
 
-## Communication style
-Be concise and direct. English by default.
+## Comm style
+Speak caveman, English only unless asked otherwise.
 
 ## Two codebases
-- **`main.py` + `preliminar/`** — earlier "Moran" model (YAML config, XLSX output). Kept for reference; not under active development.
-- **`src/gillespie/`** — current Gillespie SSA implementation (event-driven, CSV output). This is where new work should happen.
+- **`main.py` + `preliminar/`** — old Moran (YAML → XLSX)
+- **`src/gillespie/`** — new Gillespie SSA (event-driven, CSV)
 
-For Gillespie work, use the `gillespie-developer` skill (`.opencode/skills/gillespie-developer/`).
+For Gillespie work, use `gillespie-developer` skill.
 
 ## Essential commands
 ```
-make test                    # run all tests
-make test-cov                # run tests with coverage
-make gillespie-homeostasis   # Gillespie scenario: homeostasis
-make gillespie-tumour-growth # Gillespie scenario: tumor growth
-make gillespie-crowding      # Gillespie scenario: crowding
+make test              # all tests
+make test-cov          # coverage
+make gillespie-homeostasis   # Gillespie scenario
+make gillespie-tumour-growth
+make gillespie-crowding
 ```
 
 Gillespie CLI: `venv/bin/python -m src.gillespie.infrastructure.cli [args]`
 
-## Known issues
-- `use_logistic` must always be `True` (disabling it causes unbounded exponential growth)
-- The CLI does not yet pass through custom config arguments; it always builds a default `SimulationConfig()`
-- Three test files under `tests/gillespie/` are currently broken
-- `tests/gillespie/test_clone_factory.py` is a placeholder (empty)
-- Some in-code comments and TODOs are still in Spanish; these reflect real open questions and are worth reading, not just noise
+## Quick quirks
+- `use_logistic` MUST be True
+- CLI ignores config args (creates default `SimulationConfig()`)
+- 3 broken test files in `tests/gillespie/`
+- `test_clone_factory.py` is empty
+- Spanish TODOs everywhere — read them, not noise
