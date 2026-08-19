@@ -3,9 +3,11 @@ import pandas as pd
 
 ## ESTE ES EL BUENO
 def plot_clone_dynamics(
-    file_path="results/multi_seed_runs/seed_0001/history.csv",
+    file_path="results/multi_seed_runs/seed_0001",
     populations_to_include=None,  # e.g. ['root', 'mutated_clones'] or None for all
     figsize=(10, 6),
+    plot_extinct: bool = False,
+    log_y: bool = False,
 ):
     """Plots Gillespie simulation dynamics by clone_id with dynamic population filtering.
 
@@ -20,11 +22,17 @@ def plot_clone_dynamics(
         "rd": "float64",
     }
 
-    df = pd.read_csv(file_path, dtype=dtypes)
+    df = pd.read_csv(f"{file_path}/history.csv", dtype=dtypes)
+    df_extinct = pd.read_csv(f"{file_path}/clones.csv", dtype=dtypes)
+
+    # Identify clones with no current population.
+    extinct_clone_ids = set(
+        df_extinct.loc[df_extinct["N"].eq(0), "clone_id"]
+    )
 
     special_colors = {
         "root": "#e377c2",  # Pink
-        "mutated_root": "#f71b1b",  # Brown
+        "mutated_root": "#7f7f7f",  # Brown
         "immune": "#9467bd",  # Purple
         "exhausted": "#C0A822",  # Red
     }
@@ -54,7 +62,9 @@ def plot_clone_dynamics(
     fig, ax = plt.subplots(figsize=figsize)
 
     mutant_color = "#7f7f7f"
+    extinct_color = "#d62727ff"
     mutant_legend_added = False
+    extinct_legend_added = False
 
     for clone_name, group in df.groupby("clone_id", observed=True):
         if group.empty:
@@ -62,13 +72,26 @@ def plot_clone_dynamics(
 
         group = group.sort_values("time")
 
-        if clone_name in special_colors:
+        if plot_extinct and clone_name in extinct_clone_ids:
+            color = extinct_color
+            line_zorder = 3
+            line_width = 1.8
+            if not extinct_legend_added:
+                label = "Extinct Clones"
+                extinct_legend_added = True
+            else:
+                label = None
+        elif clone_name in special_colors and clone_name not in {"mutated_root"}:
             color = special_colors[clone_name]
             label = clone_name
+            line_zorder = 2
+            line_width = 1.5
         else:
             color = mutant_color
+            line_zorder = 2
+            line_width = 1.5
             if not mutant_legend_added:
-                label = "Mutant Clones (Numerical)"
+                label = "Mutant Clones"
                 mutant_legend_added = True
             else:
                 label = None
@@ -80,11 +103,15 @@ def plot_clone_dynamics(
             color=color,
             drawstyle="steps-post",
             alpha=0.75,
-            linewidth=1.5,
+            linewidth=line_width,
+            zorder=line_zorder,
         )
 
     ax.set_xlabel("Time ($t$)", fontsize=12)
     ax.set_ylabel("Population Size ($N$)", fontsize=12)
+    if log_y:
+        # Note: trajectories with N=0 are not shown on a strict log scale.
+        ax.set_yscale("log")
     ax.set_title(
         "Gillespie Simulation: Population Dynamics Over Time",
         fontsize=14,
@@ -92,7 +119,7 @@ def plot_clone_dynamics(
     )
     ax.legend(title="Population Type", loc="upper left", frameon=True)
     ax.grid(True, linestyle="--", alpha=0.5)
-
+    # ax.set_ylim(0,400)
     plt.tight_layout()
     return fig
 
@@ -101,7 +128,9 @@ def plot_clone_dynamics(
 if __name__ == "__main__":
     # Plot 'root' AND all numerical mutant clones, but exclude 'immune' and 'exhausted'
     fig = plot_clone_dynamics(
-        "results/multi_seed_runs/seed_0020/history.csv",
-        populations_to_include= None,
+        "results/multi_seed_runs/seed_0060",
+        populations_to_include= ["mutated_root","mutated_clones"],
+        plot_extinct=True,
+        log_y=True,
     )
-    fig.savefig("results/multi_seed_runs/seed_0020/gillepie_grouped.png", dpi=300, bbox_inches="tight")
+    fig.savefig("results/multi_seed_runs/seed_0060/mutated_grouped_logarithmic.png", dpi=300, bbox_inches="tight")
