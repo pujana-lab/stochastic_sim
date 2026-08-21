@@ -9,7 +9,7 @@ def plot_mutant_across_seeds(
     figsize=(11, 6),
     dpi=300,
 ):
-    """Finds all seed history.csv files, extracts mutant population dynamics,
+    """Finds all seed history.parquet files, extracts mutant population dynamics,
 
     and plots them on a single graph for cross-simulation comparison.
     """
@@ -23,11 +23,11 @@ def plot_mutant_across_seeds(
     }
 
     # Locate all history files across seed subdirectories
-    history_files = sorted(Path(base_dir).glob('seed_*/history.csv'))
+    history_files = sorted(Path(base_dir).glob('seed_*/history.parquet'))
 
     if not history_files:
         raise FileNotFoundError(
-            f"No history files found matching '{base_dir}/seed_*/history.csv'"
+            f"No history files found matching '{base_dir}/seed_*/history.parquet'"
         )
 
     fig, ax = plt.subplots(figsize=figsize)
@@ -39,11 +39,7 @@ def plot_mutant_across_seeds(
         seed_name = file_path.parent.name  # Extracts 'seed_0001'
 
         # Read only required columns to improve performance
-        df = pd.read_csv(
-            file_path,
-            dtype=dtypes,
-            usecols=['time', 'type', 'N'],
-        )
+        df = pd.read_parquet(file_path, columns=['time', 'type', 'N'])
 
         # Filter strictly for mutant populations
         df_mutant = df[df['type'] == mutant_type_label]

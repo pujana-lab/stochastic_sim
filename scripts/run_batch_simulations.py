@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
-from email import parser
 import json
 from pathlib import Path
 
-from src.gillespie.infrastructure.csv_output import save_clones_csv, save_history_csv, save_rates_history_csv
+from src.gillespie.infrastructure.csv_output import (
+    save_clones_parquet,
+    save_history_parquet,
+    save_rates_history_parquet,
+)
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
 
@@ -60,9 +63,9 @@ def run_single_simulation(seed: int, base_params: dict, output_dir: Path, save_c
     if save_config:
         save_config_text(config, run_dir / "config.txt")
 
-    save_history_csv(run_dir / "history.csv", times, history)
-    save_clones_csv(run_dir / "clones.csv", tissue_state.clones)
-    save_rates_history_csv(run_dir / "rates_history.csv", rates_history)
+    save_history_parquet(run_dir / "history.parquet", times, history)
+    save_clones_parquet(run_dir / "clones.parquet", tissue_state.clones)
+    save_rates_history_parquet(run_dir / "rates_history.parquet", rates_history)
 
     return run_dir
 

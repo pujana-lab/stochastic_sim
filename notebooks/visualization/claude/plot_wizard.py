@@ -37,9 +37,9 @@ def menu_single():
     print("SINGLE SIMULATION PLOTTING")
     print("-"*70 + "\n")
     
-    file_path = input("Enter path to history.csv (default: results/multi_seed_runs/seed_0001/history.csv): ").strip()
+    file_path = input("Enter path to history.parquet (default: results/multi_seed_runs/seed_0001/history.parquet): ").strip()
     if not file_path:
-        file_path = "results/multi_seed_runs/seed_0001/history.csv"
+        file_path = "results/multi_seed_runs/seed_0001/history.parquet"
     
     if not Path(file_path).exists():
         print(f"✗ File not found: {file_path}")

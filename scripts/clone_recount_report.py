@@ -14,6 +14,8 @@ import statistics
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
+
 
 SPECIAL_CLONES = {"root", "mutated_root", "immune", "exhausted"}
 
@@ -74,6 +76,41 @@ def read_history_csv(path: str) -> List[HistoryRow]:
     return rows
 
 
+def read_clones_parquet(path: str) -> List[CloneRow]:
+    df = pd.read_parquet(path)
+    rows: List[CloneRow] = []
+    for row in df.to_dict(orient="records"):
+        clone_id = str(row["clone_id"]).strip()
+        parent = str(row.get("parent", "") or "").strip()
+        n = int(float(row["N"]))
+        rows.append(CloneRow(clone_id=clone_id, parent=parent, n=n))
+    return rows
+
+
+def read_history_parquet(path: str) -> List[HistoryRow]:
+    df = pd.read_parquet(path)
+    rows: List[HistoryRow] = []
+    for row in df.to_dict(orient="records"):
+        rows.append(
+            HistoryRow(
+                time=float(row["time"]),
+                clone_id=str(row["clone_id"]).strip(),
+                n=int(float(row["N"])),
+            )
+        )
+    return rows
+
+
+def resolve_seed_file(seed_dir: str, stem: str) -> str:
+    parquet_path = os.path.join(seed_dir, f"{stem}.parquet")
+    csv_path = os.path.join(seed_dir, f"{stem}.csv")
+    if os.path.exists(parquet_path):
+        return parquet_path
+    if os.path.exists(csv_path):
+        return csv_path
+    raise FileNotFoundError(f"Not found: {parquet_path} (or legacy {csv_path})")
+
+
 def final_snapshot(history_rows: List[HistoryRow]) -> Tuple[float, List[HistoryRow]]:
     if not history_rows:
         return 0.0, []
@@ -109,16 +146,18 @@ def make_markdown_table(title: str, rows: List[Tuple[str, str]]) -> str:
 
 
 def analyze(seed_dir: str, top_n: int) -> str:
-    clones_path = os.path.join(seed_dir, "clones.csv")
-    history_path = os.path.join(seed_dir, "history.csv")
+    clones_path = resolve_seed_file(seed_dir, "clones")
+    history_path = resolve_seed_file(seed_dir, "history")
 
-    if not os.path.exists(clones_path):
-        raise FileNotFoundError(f"Not found: {clones_path}")
-    if not os.path.exists(history_path):
-        raise FileNotFoundError(f"Not found: {history_path}")
+    if clones_path.endswith(".parquet"):
+        clone_rows = read_clones_parquet(clones_path)
+    else:
+        clone_rows = read_clones_csv(clones_path)
 
-    clone_rows = read_clones_csv(clones_path)
-    history_rows = read_history_csv(history_path)
+    if history_path.endswith(".parquet"):
+        history_rows = read_history_parquet(history_path)
+    else:
+        history_rows = read_history_csv(history_path)
 
     numeric_clones = [r for r in clone_rows if is_recount_clone_id(r.clone_id)]
     numeric_total = len(numeric_clones)
@@ -215,7 +254,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "seed_dir",
-        help="Directory containing clones.csv and history.csv (e.g. results/multi_seed_runs/seed_0060)",
+        help="Directory containing clones.parquet and history.parquet (CSV also accepted for legacy runs).",
     )
     parser.add_argument(
         "--top",

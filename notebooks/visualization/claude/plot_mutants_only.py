@@ -14,7 +14,7 @@ from plot_gillespie_enhanced import plot_mutant_trajectories
 
 if __name__ == "__main__":
     # Configure these paths according to your needs
-    file_path = 'results/multi_seed_runs/seed_0001/history.csv'
+    file_path = 'results/multi_seed_runs/seed_0001/history.parquet'
     output_path = 'results/multi_seed_runs/seed_0001/mutants_only.png'
     
     print(f"Processing: {file_path}")

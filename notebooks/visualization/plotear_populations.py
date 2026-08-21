@@ -22,8 +22,8 @@ def plot_clone_dynamics(
         "rd": "float64",
     }
 
-    df = pd.read_csv(f"{file_path}/history.csv", dtype=dtypes)
-    df_extinct = pd.read_csv(f"{file_path}/clones.csv", dtype=dtypes)
+    df = pd.read_parquet(f"{file_path}/history.parquet")
+    df_extinct = pd.read_parquet(f"{file_path}/clones.parquet")
 
     # Identify clones with no current population.
     extinct_clone_ids = set(

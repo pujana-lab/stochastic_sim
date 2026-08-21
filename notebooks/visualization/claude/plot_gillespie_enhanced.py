@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-def plot_gillespie_dynamics(file_path='history.csv', figsize=(11, 6), dpi=300):
+def plot_gillespie_dynamics(file_path='history.parquet', figsize=(11, 6), dpi=300):
     """
     Load and plot aggregated population dynamics from a Gillespie simulation.
     
     Parameters
     ----------
-    file_path : str, default='history.csv'
-        Path to the CSV file containing simulation history.
+    file_path : str, default='history.parquet'
+        Path to the parquet file containing simulation history.
     figsize : tuple, default=(11, 6)
         Figure size as (width, height) in inches.
     dpi : int, default=300
@@ -34,7 +34,7 @@ def plot_gillespie_dynamics(file_path='history.csv', figsize=(11, 6), dpi=300):
     }
     
     print(f"Loading data from {file_path}...")
-    df = pd.read_csv(file_path, dtype=dtypes)
+    df = pd.read_parquet(file_path)
     
     print("Processing and aggregating populations...")
     df_aggregated = df.groupby(['time', 'type'], observed=False)['N'].sum().reset_index()
@@ -66,14 +66,14 @@ def plot_gillespie_dynamics(file_path='history.csv', figsize=(11, 6), dpi=300):
     return fig, df_aggregated
 
 
-def plot_mutant_trajectories(file_path='history.csv', mutant_types=None, figsize=(11, 6), dpi=300):
+def plot_mutant_trajectories(file_path='history.parquet', mutant_types=None, figsize=(11, 6), dpi=300):
     """
     Plot only mutant population trajectories from a Gillespie simulation.
     
     Parameters
     ----------
-    file_path : str, default='history.csv'
-        Path to the CSV file containing simulation history.
+    file_path : str, default='history.parquet'
+        Path to the parquet file containing simulation history.
     mutant_types : list, optional
         List of mutant type names to plot. If None, plots all types except 'WT' (wild-type).
     figsize : tuple, default=(11, 6)
@@ -99,7 +99,7 @@ def plot_mutant_trajectories(file_path='history.csv', mutant_types=None, figsize
     }
     
     print(f"Loading data from {file_path}...")
-    df = pd.read_csv(file_path, dtype=dtypes)
+    df = pd.read_parquet(file_path)
     
     print("Processing and aggregating populations...")
     df_aggregated = df.groupby(['time', 'type'], observed=False)['N'].sum().reset_index()
@@ -146,11 +146,11 @@ def plot_mutant_trajectories(file_path='history.csv', mutant_types=None, figsize
 # Usage examples
 if __name__ == "__main__":
     # Example 1: Plot all populations
-    fig1, df1 = plot_gillespie_dynamics('results/multi_seed_runs/seed_0001/history.csv')
+    fig1, df1 = plot_gillespie_dynamics('results/multi_seed_runs/seed_0001/history.parquet')
     fig1.savefig('results/multi_seed_runs/seed_0001/gillespie_all_populations.png', dpi=300, bbox_inches='tight')
     print("All populations plot saved\n")
     
     # Example 2: Plot only mutants
-    fig2, df2 = plot_mutant_trajectories('results/multi_seed_runs/seed_0001/history.csv')
+    fig2, df2 = plot_mutant_trajectories('results/multi_seed_runs/seed_0001/history.parquet')
     fig2.savefig('results/multi_seed_runs/seed_0001/gillespie_mutant_trajectories.png', dpi=300, bbox_inches='tight')
     print("Mutant trajectories plot saved")

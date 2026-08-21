@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import pandas as pd
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
@@ -22,87 +23,150 @@ def clone_id_to_str(clone_id: CloneId) -> str:
     else:
         return ".".join(map(str, clone_id))
     
+def _normalize_parquet_path(path: Path) -> Path:
+    if path.suffix.lower() == ".parquet":
+        return path
+    return path.with_suffix(".parquet")
+
+
 #TODO: Fix this so that it passes the TissueState Object from which data is pulled
 #TODO: Instead of saving the whole history in one go at the end of the simulation we should write it on the go. (makes more sense for big/long simulations i think)
-def save_history_csv(path: Path, times: List[float], history: List[Dict[CloneId, dict]]) -> None:
-    with path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["time","type", "clone_id", "N", "rb", "rd"])
-        for t, snap in zip(times, history):
-            for cid, values in snap.items():
-                writer.writerow([t, values["Type"] ,clone_id_to_str(cid), values["N"], values["rb"], values["rd"]])
+def save_history_parquet(path: Path, times: List[float], history: List[Dict[CloneId, dict]]) -> Path:
+    out_path = _normalize_parquet_path(path)
+    rows: list[dict] = []
+    for t, snap in zip(times, history):
+        for cid, values in snap.items():
+            rows.append(
+                {
+                    "time": t,
+                    "type": values["Type"],
+                    "clone_id": clone_id_to_str(cid),
+                    "N": values["N"],
+                    "rb": values["rb"],
+                    "rd": values["rd"],
+                }
+            )
+
+    df = pd.DataFrame(rows, columns=["time", "type", "clone_id", "N", "rb", "rd"])
+    df.to_parquet(out_path, index=False)
+    return out_path
 
 
-def save_clones_csv(path: Path, clones: Dict[CloneId, Clone]) -> None:
-    with path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            "clone_id", "parent", "N",
-            "birth_rate", "death_rate", "mutation_rate",
-            "instability", "buildup", "d1", "d2", "children_count",
-        ])
-        for cid, clone in sorted(clones.items(), key=lambda x: (len(x[0]), x[0])):
-            writer.writerow([
-                clone_id_to_str(cid),
-                "" if clone.parent is None else clone_id_to_str(clone.parent),
-                clone.N,
-                clone.birth_rate,
-                clone.death_rate,
-                clone.mutation_rate,
-                clone.instability,
-                clone.buildup,
-                clone.d1,
-                clone.d2,
-                clone.children_count,
-            ])
+def save_clones_parquet(path: Path, clones: Dict[CloneId, Clone]) -> Path:
+    out_path = _normalize_parquet_path(path)
+    rows: list[dict] = []
+    for cid, clone in sorted(clones.items(), key=lambda x: (len(x[0]), x[0])):
+        rows.append(
+            {
+                "clone_id": clone_id_to_str(cid),
+                "parent": "" if clone.parent is None else clone_id_to_str(clone.parent),
+                "N": clone.N,
+                "birth_rate": clone.birth_rate,
+                "death_rate": clone.death_rate,
+                "mutation_rate": clone.mutation_rate,
+                "instability": clone.instability,
+                "buildup": clone.buildup,
+                "d1": clone.d1,
+                "d2": clone.d2,
+                "children_count": clone.children_count,
+            }
+        )
+
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "clone_id",
+            "parent",
+            "N",
+            "birth_rate",
+            "death_rate",
+            "mutation_rate",
+            "instability",
+            "buildup",
+            "d1",
+            "d2",
+            "children_count",
+        ],
+    )
+    df.to_parquet(out_path, index=False)
+    return out_path
 
 
-def save_debug_history_csv(
+def save_debug_history_parquet(
     path: Path,
     times: List[float],
     history: List[Dict[CloneId, dict]],
     events: List[Optional[Event]],
-) -> None:
-    with path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            "time", "clone_id", "Type", "N",
-            "rb", "rd", "rm", "re",
-            "instability", "buildup",
-            "event_kind", "event_clone_type",
-        ])
-        for t, snap, evt in zip(times, history, events):
-            event_kind = evt.kind.value if evt is not None else "none"
-            event_clone_type = evt.clone_type if evt is not None else "none"
-            for cid, values in snap.items():
-                writer.writerow([
-                    t,
-                    clone_id_to_str(cid),
-                    values.get("Type", ""),
-                    values["N"],
-                    values["rb"],
-                    values["rd"],
-                    values.get("rm", ""),
-                    values.get("re", ""),
-                    values.get("instability", ""),
-                    values.get("buildup", ""),
-                    event_kind,
-                    event_clone_type,
-                ])
-def save_rates_history_csv(path: Path, rates_history: List[List[Dict]]) -> None:
+) -> Path:
+    out_path = _normalize_parquet_path(path)
+    rows: list[dict] = []
+    for t, snap, evt in zip(times, history, events):
+        event_kind = evt.kind.value if evt is not None else "none"
+        event_clone_type = evt.clone_type if evt is not None else "none"
+        for cid, values in snap.items():
+            rows.append(
+                {
+                    "time": t,
+                    "clone_id": clone_id_to_str(cid),
+                    "Type": values.get("Type", ""),
+                    "N": values["N"],
+                    "rb": values["rb"],
+                    "rd": values["rd"],
+                    "rm": values.get("rm", ""),
+                    "re": values.get("re", ""),
+                    "instability": values.get("instability", ""),
+                    "buildup": values.get("buildup", ""),
+                    "event_kind": event_kind,
+                    "event_clone_type": event_clone_type,
+                }
+            )
+
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "time",
+            "clone_id",
+            "Type",
+            "N",
+            "rb",
+            "rd",
+            "rm",
+            "re",
+            "instability",
+            "buildup",
+            "event_kind",
+            "event_clone_type",
+        ],
+    )
+    df.to_parquet(out_path, index=False)
+    return out_path
+
+
+def save_rates_history_parquet(path: Path, rates_history: List[List[Dict]]) -> Path:
     """
     Guarda el histórico de tasas asumiendo que el tiempo 't' ya está en los datos.
     """
-    with path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["time", "kind", "clone_id", "clone_type", "rate"])
-        
-        for step_events in rates_history:
-            for event in step_events:
-                writer.writerow([
-                    event["time"],  # Extraemos 'time' directamente del diccionario
-                    event["kind"], 
-                    clone_id_to_str(event["clone_id"]), 
-                    event["clone_type"], 
-                    event["rate"]
-                ])
+    out_path = _normalize_parquet_path(path)
+    rows: list[dict] = []
+    for step_events in rates_history:
+        for event in step_events:
+            rows.append(
+                {
+                    "time": event["time"],
+                    "kind": event["kind"],
+                    "clone_id": clone_id_to_str(event["clone_id"]),
+                    "clone_type": event["clone_type"],
+                    "rate": event["rate"],
+                }
+            )
+
+    df = pd.DataFrame(rows, columns=["time", "kind", "clone_id", "clone_type", "rate"])
+    df.to_parquet(out_path, index=False)
+    return out_path
+
+
+# Backward compatibility aliases during transition.
+save_history_csv = save_history_parquet
+save_clones_csv = save_clones_parquet
+save_debug_history_csv = save_debug_history_parquet
+save_rates_history_csv = save_rates_history_parquet

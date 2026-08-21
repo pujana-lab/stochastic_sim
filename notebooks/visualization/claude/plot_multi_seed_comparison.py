@@ -55,16 +55,16 @@ def load_mutant_trajectories_from_seeds(base_dir='results/multi_seed_runs',
     all_times = None
     
     for seed_dir in seed_dirs:
-        history_file = seed_dir / 'history.csv'
+        history_file = seed_dir / 'history.parquet'
         seed_name = seed_dir.name
         
         if not history_file.exists():
-            print(f"  ⚠ Skipping {seed_name}: history.csv not found")
+            print(f"  ⚠ Skipping {seed_name}: history.parquet not found")
             continue
         
         try:
             print(f"  Loading {seed_name}...")
-            df = pd.read_csv(history_file, dtype=dtypes)
+            df = pd.read_parquet(history_file)
 
             # Keep only mutant rows. This excludes WT/control populations and the
             # main root/immune/exhausted families that are not mutants.

@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 ## ESTE ES EL BUENO
 def plot_mutant_dynamics_multi_seed(
-    file_pattern='results/multi_seed_runs/seed_*/history.csv',
+    file_pattern='results/multi_seed_runs/seed_*/history.parquet',
     mutant_label='mutated',
     figsize=(11, 6),
     dpi=300
@@ -14,8 +14,8 @@ def plot_mutant_dynamics_multi_seed(
 
     Parameters
     ----------
-    file_pattern : str, default='results/multi_seed_runs/seed_*/history.csv'
-        Patrón glob para encontrar los archivos history.csv de cada corrida.
+    file_pattern : str, default='results/multi_seed_runs/seed_*/history.parquet'
+        Patrón glob para encontrar los archivos history.parquet de cada corrida.
     mutant_label : str, default='mutated'
         Valor en la columna 'type' que identifica a la población mutante.
     figsize : tuple, default=(11, 6)
@@ -54,7 +54,7 @@ def plot_mutant_dynamics_multi_seed(
         path_parts = file_path.replace('\\', '/').split('/')
         seed_label = path_parts[-2] if len(path_parts) > 1 else file_path
 
-        df = pd.read_csv(file_path, dtype=dtypes)
+        df = pd.read_parquet(file_path)
 
         # 1. Filtrar SOLO la población mutante
         df_mutant = df[df['type'] == mutant_label]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     # Ejemplo 1: Procesar todas las semillas del patrón indicado
     fig, df_mutants = plot_mutant_dynamics_multi_seed(
-        file_pattern='results/multi_seed_runs/seed_*/history.csv'
+        file_pattern='results/multi_seed_runs/seed_*/history.parquet'
     )
     
     if fig is not None:
