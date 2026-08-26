@@ -1,36 +1,40 @@
 {
-  "cell_parameters": {
+  "cell_types": {
     "base": {
-      "N": 30,
-      "K": 1,
-      "lambda0": 0.005,
+      "N": 100,
+      "lambda_0": 0.005,
       "mu": 0.002,
-      "nu": 0.002,
-      "next_mutation": "mutated"
+      "nu": 0.0002,
+      "K": 100
     },
     "immune": {
-      "N": 15,
-      "K": 0.5,
-      "lambda0": 0.005,
-      "omega_exhaust": 0.003,
-      "mu": 0.0
+      "N": 50,
+      "lambda_0": 0.005,
+      "mu": 0.003,
+      "K": 50
     },
     "mutated": {
-      "N": 1,
-      "K": 2,
-      "fitness_gain": 0.2
+      "N": 0,
+      "K": 200
     },
     "exhausted": {
       "N": 0,
-      "lambda0": 0.0
+      "mu": 0.002
     }
   },
-  "T_max": 6000,
+
+  "T_max": 2000,
   "seed": null,
+
+  "use_logistic": true,
+  "use_logistic_adapted": true,
   "decline": 0.0,
-  "Kmin": 1,
+  "Kmin": 1.0,
+
+  "fitness_gain": 0.2,
   "theta_I": 0.0005,
   "beta": 0.0004,
+
   "d1_0": 0.0,
   "d2_0": 0.0,
   "instability_0": 0.0,
@@ -38,12 +42,9 @@
   "base_instability_buildup": 0.0,
   "mutation_instability_jump": 0.0,
   "mutation_buildup_gain": 0.0,
+
   "verbose": true,
   "scale": true,
   "decay": false,
-  "use_logistic": true,
-  "use_logistic_adapted": true,
-  "save_all_steps": true,
-  "save_interval": 0,
-  "OMEGA": 400
+  "OMEGA": 100
 }

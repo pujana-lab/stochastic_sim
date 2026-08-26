@@ -7,9 +7,6 @@ __pycache__/
 *.so
 # Ignore csv
 *.csv
-*.png
-
-results/multi_seed_runs
 
 # Distribution / packaging
 .Python
