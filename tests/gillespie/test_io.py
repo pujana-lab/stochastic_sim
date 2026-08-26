@@ -1,10 +1,8 @@
-import csv
 import pytest
-from pathlib import Path
+import pandas as pd
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.clone import Clone
-from src.gillespie.cloneId import CloneId
-from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_history_csv, save_clones_csv
+from src.gillespie.clone_factory import CloneFactory
+from src.gillespie.infrastructure.csv_output import clone_id_to_str, save_clones_parquet, save_history_parquet
 
 
 # ── clone_id_to_str ───────────────────────────────────────────────────────────
@@ -19,7 +17,7 @@ def test_nested_clone_id():
     assert clone_id_to_str((1, 2, 3)) == "1.2.3"
 
 
-# ── save_history_csv ──────────────────────────────────────────────────────────
+# ── save_history_parquet ─────────────────────────────────────────────────────
 
 def make_history_data():
     times = [0.0, 1.0]
@@ -30,80 +28,73 @@ def make_history_data():
     return times, history
 
 
-def test_save_history_csv_creates_file(tmp_path):
-    path = tmp_path / "history.csv"
+def test_save_history_parquet_creates_file(tmp_path):
+    path = tmp_path / "history.parquet"
     times, history = make_history_data()
-    save_history_csv(path, times, history)
+    save_history_parquet(path, times, history)
     assert path.exists()
 
 
-def test_save_history_csv_header(tmp_path):
-    path = tmp_path / "history.csv"
+def test_save_history_parquet_header(tmp_path):
+    path = tmp_path / "history.parquet"
     times, history = make_history_data()
-    save_history_csv(path, times, history)
-    with path.open() as f:
-        reader = csv.reader(f)
-        header = next(reader)
-    assert header == ["time", "type", "clone_id", "N", "rb", "rd"]
+    save_history_parquet(path, times, history)
+    df = pd.read_parquet(path)
+    assert list(df.columns) == ["time", "type", "clone_id", "N", "rb", "rd"]
 
 
-def test_save_history_csv_row_count(tmp_path):
-    path = tmp_path / "history.csv"
+def test_save_history_parquet_row_count(tmp_path):
+    path = tmp_path / "history.parquet"
     times, history = make_history_data()
-    save_history_csv(path, times, history)
-    with path.open() as f:
-        rows = list(csv.reader(f))
-    # 1 header + 1 clone at t=0 + 2 clones at t=1 = 4
-    assert len(rows) == 4
+    save_history_parquet(path, times, history)
+    df = pd.read_parquet(path)
+    assert len(df) == 3
 
 
-def test_save_history_csv_clone_id_encoding(tmp_path):
-    path = tmp_path / "history.csv"
-    save_history_csv(path, [0.0], [{(): {"Type": "base", "N": 5, "rb": 0.5, "rd": 0.2}}])
-    with path.open() as f:
-        rows = list(csv.DictReader(f))
-    assert rows[0]["clone_id"] == "root"
+def test_save_history_parquet_clone_id_encoding(tmp_path):
+    path = tmp_path / "history.parquet"
+    save_history_parquet(path, [0.0], [{(): {"Type": "base", "N": 5, "rb": 0.5, "rd": 0.2}}])
+    df = pd.read_parquet(path)
+    assert df.iloc[0]["clone_id"] == "root"
 
 
-# ── save_clones_csv ───────────────────────────────────────────────────────────
+# ── save_clones_parquet ──────────────────────────────────────────────────────
 
 def make_clones() -> dict:
     config = SimulationConfig()
-    root = Clone(clone_id=(), N=10, config=config)
-    child = Clone(clone_id=(1,), N=3, config=config, parent=())
+    factory = CloneFactory(config)
+    root = factory.create_clone(clone_id=(), clone_type="base", N=10)
+    child = factory.create_clone(clone_id=(1,), clone_type="base", N=3, parent=())
     return {(): root, (1,): child}
 
 
-def test_save_clones_csv_creates_file(tmp_path):
-    path = tmp_path / "clones.csv"
-    save_clones_csv(path, make_clones())
+def test_save_clones_parquet_creates_file(tmp_path):
+    path = tmp_path / "clones.parquet"
+    save_clones_parquet(path, make_clones())
     assert path.exists()
 
 
-def test_save_clones_csv_header(tmp_path):
-    path = tmp_path / "clones.csv"
-    save_clones_csv(path, make_clones())
-    with path.open() as f:
-        header = next(csv.reader(f))
+def test_save_clones_parquet_header(tmp_path):
+    path = tmp_path / "clones.parquet"
+    save_clones_parquet(path, make_clones())
+    header = list(pd.read_parquet(path).columns)
     assert "clone_id" in header
     assert "N" in header
     assert "birth_rate" in header
 
 
-def test_save_clones_csv_row_count(tmp_path):
-    path = tmp_path / "clones.csv"
+def test_save_clones_parquet_row_count(tmp_path):
+    path = tmp_path / "clones.parquet"
     clones = make_clones()
-    save_clones_csv(path, clones)
-    with path.open() as f:
-        rows = list(csv.reader(f))
-    assert len(rows) == len(clones) + 1  # +1 header
+    save_clones_parquet(path, clones)
+    df = pd.read_parquet(path)
+    assert len(df) == len(clones)
 
 
-def test_save_clones_csv_parent_encoding(tmp_path):
-    path = tmp_path / "clones.csv"
-    save_clones_csv(path, make_clones())
-    with path.open() as f:
-        rows = list(csv.DictReader(f))
+def test_save_clones_parquet_parent_encoding(tmp_path):
+    path = tmp_path / "clones.parquet"
+    save_clones_parquet(path, make_clones())
+    rows = pd.read_parquet(path).to_dict(orient="records")
     root_row = next(r for r in rows if r["clone_id"] == "root")
     child_row = next(r for r in rows if r["clone_id"] == "1")
     assert root_row["parent"] == ""

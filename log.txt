@@ -1,0 +1,680 @@
+commit c3bada3e277acf437a87c587d083d478bdcb31c6
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed Aug 19 12:33:49 2026 +0200
+
+    optimization and major changes
+
+commit f2d7ba2b764c6a3cc515e2dda3e767b925609c00
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:53:51 2026 +0200
+
+    Update AGENTS.md
+    
+    Soften AGENTS.md tone for external readers
+
+commit 36aa91645d8386e38d7d62505916fbb5677b7cf5
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:49:25 2026 +0200
+
+    Delete cellSim
+
+commit 4244dc4a0bc825b63137cb1e872bd5c016609f9e
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:37:15 2026 +0200
+
+    Rename sucio_victor.py to scratch_victor.py
+
+commit 259612a9b8d4d4ba485cb2b5fc8423d02a59005b
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:33:22 2026 +0200
+
+    Update sucio_victor.py
+
+commit 4954f0887075f5160264a8b5efb0ecd2ab5b538b
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:20:03 2026 +0200
+
+    Create LICENSE
+
+commit c2a87ab6cce82ea9ab0b2bf0e9b1c51854a3e8bc
+Author: Pujana Lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Sun Aug 2 12:17:40 2026 +0200
+
+    Update README.md
+
+commit 426e6475969732f91a5b0d3d542bbd92cdf0a9c8
+Author: pujana-lab <64095696+pujana-lab@users.noreply.github.com>
+Date:   Thu Jul 16 15:33:48 2026 +0200
+
+    Update README.md
+
+commit aa1d6c9aef042ca2a9adbab674d5e9545cc78468
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri Jul 3 12:46:35 2026 +0200
+
+    Some experiments and TODOS. version semifuncional :D
+
+commit c3a0db8e1452e78e636bd0407362eff032965b7e
+Merge: 26dfce4 a63fc6c
+Author: Victor Manso Valladolid <victor.mansov@gmail.com>
+Date:   Fri Jul 3 11:45:38 2026 +0200
+
+    Merge pull request #15 from l-palomero/para-review-victor
+    
+    Para review victor
+
+commit a63fc6c2574762c2756298d23df23f81d0ea8c50
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri Jul 3 11:30:52 2026 +0200
+
+    BUG FIX: was not multiplying birth events by birthrate...
+
+commit 5bd8ea6924d27549e808b910aea06c3944367f60
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 29 17:56:42 2026 +0200
+
+    Bastantes cambios, anyadido nuevo csv para los rates porque hay algo que no me cuadra.
+
+commit 128e392b858565ffc4a5c53c8185f4a2be64789e
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 29 12:18:10 2026 +0200
+
+    FIX: crowding rescaling now takes fitness gain of mutant cells into account when adjusting for homeostasis
+
+commit 26dfce47d94767575c9d989c95fc59aa20023ded
+Merge: e780ffc 2c4ba81
+Author: Victor Manso Valladolid <victor.mansov@gmail.com>
+Date:   Mon Jun 29 10:42:10 2026 +0200
+
+    Merge pull request #13 from l-palomero/para-review-victor
+    
+    Para review victor
+
+commit 2c4ba81c4e76c63d36068f6acd9577aeeb4c0e04
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri Jun 26 15:25:01 2026 +0200
+
+    Refactor: crowding strategy selected at config.postint, not at simulation initialization. all the logic for calculating K and crowding values now lives internally instead of being passed during simulation. tissue state now carries a time stamp.
+
+commit 8622ef9abe04f99b5834478b4b739b1c9e11c1ae
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 23 15:46:56 2026 +0200
+
+    Refactor simulation parameters and clone configurations; update naming conventions for clarity and consistency.  Enhance clone creation logic in CloneFactory and streamline parameter handling in SimulationConfig.
+
+commit 7000c0c4b7297ea7272a001cc4cc6e91fef2e9e1
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 23 12:08:18 2026 +0200
+
+    Fix lambda parameter naming in EvolutionEngineDeterministic and update comments in SimulationConfig
+
+commit 931b044cfaf7c99c06e566eb4d05db78406b111b
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 23 10:59:37 2026 +0200
+
+    Refactor CLI configuration to extract default values from SimulationConfig;
+
+commit efa8bcd0290edf7f2d238331ca278a6ea4e3af6a
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 22 15:27:34 2026 +0200
+
+    Refactor crowding calculations and improve handling of Kt in CrowdingStrategy; update SimulationConfig parameters for clarity and consistency.
+
+commit a5723eeac25bbd3836d7b7b06df7904b4d9a767a
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 22 11:55:01 2026 +0200
+
+    Refactor parameter naming from 'lambda' to 'lambda_0' across configurations and documentation; update related tests and summaries accordingly.
+
+commit 6fe56d07436adda88b9b1c8f3ebf9fbcd3136247
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 22 10:15:46 2026 +0200
+
+    minor changes
+
+commit e780ffcf08728b183a9b6387f78cb7fc1c375860
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 15 15:57:11 2026 +0200
+
+    par de comentarios de cosas que no me cuadran
+
+commit cc93fe7e1c7a86f5a219b55f4db88f8f59e5e587
+Merge: 5e9e1ce 4334414
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Fri Jun 12 17:51:13 2026 +0200
+
+    Merge pull request #12 from l-palomero/minor_fixes_and_add_agents
+    
+    Minor fixes and add agents
+
+commit 433441473df10e15414492ae02f1dbd32fa0b733
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Jun 11 16:11:00 2026 +0200
+
+    Minor changes, fix broken tests
+
+commit bbf697994f42c7d2e315fa83f75e3c2c29bfed71
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:38:22 2026 +0200
+
+    Separate modles params at default into subsets.
+
+commit cdea5660d8adddd6d0279218738d2ea7e55301ef
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:29:56 2026 +0200
+
+    separate cli.py into minor blocks
+
+commit 70ffefc5e698757fce626895183ad713b46443f0
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:21:00 2026 +0200
+
+    minor update at gillespie-devleoper skill
+
+commit 8754733a3e3c15935dcf88b77fb63e7b97f4ca9c
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:20:28 2026 +0200
+
+    Improve debugging and tracing.
+
+commit bf06a7d01d8633d16e6c8c87947d3f57c44cf097
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:08:58 2026 +0200
+
+    minor fixes
+
+commit 3beffddd8e1c5dd9bc5a5c431d4ab5a4a5a77da4
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Jun 10 17:02:40 2026 +0200
+
+    Minor changes, adding AI-based tools
+
+commit 5e9e1ceb34202218063cd29778ab6dab9e5d0990
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Thu Jun 11 11:37:44 2026 +0200
+
+    Some more TODOs
+
+commit 84f5a5b5f59a2e68d5d60848d422020945037239
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Thu Jun 11 10:12:41 2026 +0200
+
+    some todos
+
+commit ce937818232a7815b458d2e36fd0de50609b0cf8
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Thu Jun 11 10:07:33 2026 +0200
+
+    very minor change: Enhance TumorSimulation logging for specific event types and update requirements file
+
+commit c59bcb06a3d4d0bba51b1c045aeeee900c1402f8
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Mon Jun 8 17:03:14 2026 +0200
+
+    Remove duplicated config param at clonefactory
+
+commit 6bdc58739ae8e90fefdcc8176c62845c10a9f902
+Merge: a7fc913 962e275
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 8 16:55:44 2026 +0200
+
+    Merge remote-tracking branch 'origin/main'
+
+commit 962e275a19c9b8f7ab95ccc101c9dffb53da7927
+Merge: 2398d00 0b816f8
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Mon Jun 8 16:53:35 2026 +0200
+
+    Merge pull request #10 from l-palomero/Refactor_crowding_intro_system_size
+    
+    Refactor crowding intro system size
+
+commit 0b816f8dc59e632b5c2ea9df2483154f64fc4f60
+Merge: 4868c4a 2398d00
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Mon Jun 8 16:51:24 2026 +0200
+
+    Merge branch 'main' into Refactor_crowding_intro_system_size
+
+commit 4868c4a794a654249620111edc292d8c23b01e3c
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri Jun 5 16:42:25 2026 +0200
+
+    Big changes: First steps towards new config. crowding cambiado de sitio. primeros pasos implementar system size. cambios al output del cli. stopping conditions cambiadas
+
+commit 2398d00bc04c848c6cb3ac5594d0845825ec55c3
+Merge: bc59ecc 90201d3
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Fri Jun 5 11:25:24 2026 +0200
+
+    Merge pull request #8 from l-palomero/Tissue_state_victor
+    
+    Tissue state victor
+
+commit 90201d38e6eedeaaf2bb1bc6b2aceb879fe3b1e8
+Merge: 663e814 bc59ecc
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Fri Jun 5 11:25:11 2026 +0200
+
+    Merge branch 'main' into Tissue_state_victor
+
+commit 42d4434b4ad7141b2f5fbf9b1993722484138be1
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed Jun 3 16:14:02 2026 +0200
+
+    very minor fixes and tests
+
+commit 32bf073de4ec52b83b9dcf081aac1c9f25fdb75f
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 2 16:40:10 2026 +0200
+
+    Add support for mutated_test clone type and improve logging in TumorSimulation
+
+commit c40d66529818894078de92c0245fd344a64346fa
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 2 15:47:21 2026 +0200
+
+    TODO added
+
+commit 4091f98951d1157d9c144cfd67866d7734efd62e
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 2 15:33:11 2026 +0200
+
+    Refactor clone handling by removing CloneType enum, updating references to string types, and enhancing the Clone class structure. Adjusted tissue state and simulation logic accordingly.
+
+commit 7fc02f9729e3cc4e34363d2826b8ee51a6a91bc1
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 2 13:37:54 2026 +0200
+
+    Refactor CloneType handling and improve mutation logic in simulation
+    
+    - Added next_mutation attribute to Clone class for better mutation tracking.
+    - Updated CloneFactory to set next_mutation when creating clones.
+    - Enhanced TumorSimulation to validate mutation types and streamline clone creation.
+    - Introduced print_pop_map method in TissueState for better population visualization.
+    - Addressed SyntaxWarning in tumor_simulation.py regarding string comparison.
+    - Created CLONE_TYPE_REFACTORING.md to outline proposed changes for CloneType management.
+
+commit 21d48bb66c514bc40ce978c62b69a224065dcc5f
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Jun 2 11:56:16 2026 +0200
+
+    Fixed some parameters in order to test.  Minor fix to cli. Added verbose mode for debugging.  Tested creating extra types (it works :D)
+
+commit ecc27c03c33cf6d7bf01568a44238e6f3ee0840e
+Author: victor <victor.mansov@gmail.com>
+Date:   Mon Jun 1 17:11:21 2026 +0200
+
+    Pair coding TODO list
+
+commit 7edb9d652d9d2cd284777dc63a991b016e010fe4
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 1 15:04:46 2026 +0200
+
+    updated README.md
+
+commit bac008d9e6cd9de793bf1e9f6818715db1521a28
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Mon Jun 1 14:29:26 2026 +0200
+
+    Cambios grandes a como se pasa tissue state y como se saca el crowding. Errores esperados en los tests.
+
+commit 3d1194dbe604887f14e428e96b87567839d7aa43
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Fri May 29 16:54:17 2026 +0200
+
+    Minor changes, fixing tests
+
+commit 508800aaf3ba15f38ace5c1b0e1fb30e6b0184c6
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 29 14:34:03 2026 +0200
+
+    Refactor: Update crowding logic and introduce parameter mapping by clone type Work to do: isolate the calculation of shared type parameters from the ids to avoid redundancy
+
+commit d5bac668d8e54fa0bd926b74f40f3c7620cc1d9e
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed May 27 14:20:14 2026 +0200
+
+    Refactor: Isolate Tissue State into a separate class and update clone interactions
+    
+    - Introduced `TissueState` class to encapsulate the state of tissue and manage clones.
+    - Updated clone methods to accept `TissueState` for effective rate calculations.
+    - Modified `CloneFactory` to pass configuration to clones.
+    - Refactored `TumorSimulation` to utilize `TissueState` for population management and history tracking.
+    - Enhanced `SimulationConfig` with interaction parameters for immune and cancer cell dynamics.
+
+commit 3dd5e8670a0bd33bfbe6ff39ee097907a49eae7a
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Fri May 29 16:41:34 2026 +0200
+
+    Add more tests
+
+commit 079f830d04f8ee5cdab47499b496138d9cc395c5
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu May 28 18:11:37 2026 +0200
+
+    Minor fixes
+
+commit bc59ecce5af532d8fc3e7d6b75ef361c4ec3ecc3
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Fri May 29 16:41:34 2026 +0200
+
+    Add more tests
+
+commit a7fc9131df7259029d7d312664f055b3ed716e38
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 29 14:42:35 2026 +0200
+
+    todo created
+
+commit 663e8149cff589dfd4445e597eb817be3a257ebb
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 29 14:34:03 2026 +0200
+
+    Refactor: Update crowding logic and introduce parameter mapping by clone type Work to do: isolate the calculation of shared type parameters from the ids to avoid redundancy
+
+commit 895c3e7ff3a6b0d4d53cbdb1d113157bdb3f814a
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu May 28 18:11:37 2026 +0200
+
+    Minor fixes
+
+commit c179113814463d7b787d510ccc6765ca2b176b5a
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed May 27 16:36:26 2026 +0200
+
+    testeo de tissue_state, nuevo objetivo definido: cambiar de dict a array e indexar por tipo
+
+commit a1350863b0c836d79f93a051dde97d3f2b8d77cd
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed May 27 14:20:14 2026 +0200
+
+    Refactor: Isolate Tissue State into a separate class and update clone interactions
+    
+    - Introduced `TissueState` class to encapsulate the state of tissue and manage clones.
+    - Updated clone methods to accept `TissueState` for effective rate calculations.
+    - Modified `CloneFactory` to pass configuration to clones.
+    - Refactored `TumorSimulation` to utilize `TissueState` for population management and history tracking.
+    - Enhanced `SimulationConfig` with interaction parameters for immune and cancer cell dynamics.
+
+commit 0556bd40c064fd57cca7cfbf4f19bc886e8be2fd
+Merge: a83ada7 f18e529
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Wed May 27 11:22:27 2026 +0200
+
+    Merge pull request #7 from l-palomero/Victor_exhausted_and_more
+
+commit f18e529cd3cce83a49bbd730e3c002bda57ad4df
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 22 16:05:50 2026 +0200
+
+    cambio a factory para que pase las variables bien.  importar crowdingstrategy en clone daba loop
+
+commit 9654a10d05d254240d6ab619afbd5b7962596e40
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 22 14:32:36 2026 +0200
+
+    Logica de abundancies movida a la calase clon. clase clone ahora tiene valores por defecto en un _init_ y el factory solo pasa los valores que quiere cambiar que son diferentes del default. ANYADIDO COMENTARIOS DE COSAS QUE HAY QUE HACER
+
+commit ab70e0a48ee8da688e3b9f30afa275ab5f673064
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Fri May 22 11:34:32 2026 +0200
+
+    Movidas las carpetes viejas
+
+commit d1796ffdd4b1a712ac3d4c4e4b8982db746733af
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Wed May 13 14:57:43 2026 +0200
+
+    Implement clone types and exhaustion rate calculations; refactor clone creation and event handling
+
+commit a83ada7a36f5242627f55102e7cdfeacfd633edb
+Merge: b0f671e 7920f62
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Thu May 7 11:25:14 2026 +0200
+
+    Merge pull request #6 from l-palomero/victor-clone-factory
+    
+    creado clone factory y clone types
+
+commit 7920f625de1b543c633a8ea641ba5f6a151a81da
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue May 5 10:51:54 2026 +0200
+
+    creado clone factory y clone types
+
+commit b0f671eed2b123187e5855a7f3d1e84e453a4b18
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Thu Apr 30 16:27:56 2026 +0200
+
+    Add exhaustion_rate and its effective calculation
+    
+    Added exhaustion_rate attribute and its effective method.
+
+commit f6f3d84990c3e9fc8d866818b5a6de04210eaacf
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Apr 29 17:36:54 2026 +0200
+
+    Minor fixes
+
+commit 32cd8528b7674e139c3c1dd98775f1f26e80e7fc
+Merge: 925b220 a0bab8e
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Wed Apr 29 17:26:17 2026 +0200
+
+    Merge pull request #4 from l-palomero/task/refactor_to_main_code
+    
+    Task/refactor to main code
+
+commit a0bab8e261b5e7be457525134e189dd0a42bdffd
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Apr 29 17:25:29 2026 +0200
+
+    Finally remove basura_de_victor
+
+commit 42a1a4a1ca51e97269604166f9849228991fe87e
+Merge: cc71ec9 925b220
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Apr 29 17:24:53 2026 +0200
+
+    Merge remote-tracking branch 'origin/main' into task/refactor_to_main_code
+
+commit 925b220c26cb891593820dd77808b6b7e2967ad7
+Merge: 7833743 4a85624
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Wed Apr 29 16:36:33 2026 +0200
+
+    Merge pull request #5 from l-palomero/Victor
+    
+    primeros intentos tau leap
+
+commit 4a85624e82e5f9e166b1dc5edffd98217c284203
+Author: vmanso <victor.mansov@gmail.com>
+Date:   Tue Apr 28 15:05:38 2026 +0200
+
+    primeros intentos tau leap
+
+commit cc71ec9b279f4fa6511b4c2f4c323d3d34d1d7c2
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Apr 23 16:56:27 2026 +0200
+
+    Creating basic documentation, and adapt makefile
+
+commit 8494eefce15c5746461a71baed328e24ef37f868
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Apr 23 16:07:40 2026 +0200
+
+    chore: remove basura_de_victor after migration
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+commit cae5a514e1544d3d4b73ab79864a42b49a6efda9
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Apr 23 16:07:35 2026 +0200
+
+    chore: migrate gillespie to src/gillespie
+    
+    Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+commit 783374348fd411ab2ce82c758142b803805300ca
+Merge: 5162d01 0d9e063
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Mon Apr 20 17:17:33 2026 +0200
+
+    Merge pull request #3 from l-palomero/task/KAN-19-extract-birht-death-mutation-prop
+    
+    Task/kan 19 extract birht death mutation prop
+
+commit 5162d0132cc389d7f103bf605f418c690642a51f
+Merge: 5197b7c 684c053
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Wed Apr 15 18:43:10 2026 +0200
+
+    Merge pull request #2 from l-palomero/task/KAN-18-test-event-collection
+    
+    Task/KAN-18-test-event-collection
+
+commit 0d9e0636c84130f4a48a165f0ceb2badb2ecdc12
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Apr 15 18:40:41 2026 +0200
+
+    [WIP] Continue refactoring
+
+commit 09659819e0b0dee8ae11a9ae12b5d2d8661f3a0a
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Wed Apr 15 17:31:46 2026 +0200
+
+    [WIP] Refactoring
+
+commit 0e6ec48619356e5c743029db88f899132bf8108a
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Mon Apr 13 19:22:18 2026 +0200
+
+    Splitting object into subfunctions to make it easier to maintain.
+
+commit 684c053ec8f4c7a3c7b2277cbfad7db3a08ca136
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Apr 9 17:34:29 2026 +0200
+
+    Refactoring EventsCollection to Ratematrix
+    
+    Refs: #KAN-18
+
+commit 7d9f1209df3d05fc0e5cdb800a6697979b31157c
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Apr 9 17:13:27 2026 +0200
+
+    Refactoring events data
+    
+    Refs: #KAN-18
+
+commit 5197b7c61edcba7ea83567390b06081318adff39
+Merge: b054167 afdd1c3
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Tue Apr 7 10:52:30 2026 +0200
+
+    Merge pull request #1 from l-palomero/refactor/events_collection
+    
+    Create basic EventsCollection
+
+commit afdd1c3618d58ac0fbdf2f04cf71a8bd6b57b17a
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Tue Mar 31 17:20:36 2026 +0200
+
+    Create basic EventsCollection
+
+commit b054167192f1669c3a9905b3b9133bf4fd3c8332
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Mar 26 18:43:34 2026 +0100
+
+    Adding stages 4 and 5
+
+commit 3a531d8994eb39af29073017cebb53d5c8bfdd2a
+Author: vmansov <victor.mansov@gmail.com>
+Date:   Mon Mar 30 16:38:20 2026 +0200
+
+    carpeta_cosas
+
+commit bd62a092588891507c4ffffcc49fcd395ce2b982
+Author: victor <victor.mansov@gmail.com>
+Date:   Thu Mar 26 18:18:29 2026 +0100
+
+    test 3
+
+commit 1abf6bcf60431422b1be974b4a598adad45db7c1
+Author: victor <victor.mansov@gmail.com>
+Date:   Thu Mar 26 18:18:17 2026 +0100
+
+    test create clones
+
+commit 4b180b46eaf97a7034791b92293e02340ca111be
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Mar 26 17:58:10 2026 +0100
+
+    [WIP] Create the two most basic population test.
+
+commit 981bdfadeb29a84e1c4ba7f7df64f8723e600e86
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Mar 26 17:42:05 2026 +0100
+
+    Include basic 'create venv' method
+
+commit 4c48e9100df0b5885cd8f9857c7fcdd0a31159fa
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Thu Mar 26 17:33:00 2026 +0100
+
+    WIP building basic infra
+
+commit 5634bcd48c1ee24113b3f776d8d7e795dbba12cf
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 18:44:08 2026 +0100
+
+    docs/feat: add mutation engine support (katas 07-08)
+
+commit bdabd1abb3ab255252d15652df4ec7b658dcd726
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 17:31:39 2026 +0100
+
+    feat: implement Moran Process simulator with YAML config and CLI entry point
+
+commit fa7c5e96262087597c1a83f52c30a4f6f0d5e151
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 16:34:24 2026 +0100
+
+    KATA 06: Add Bernoulli evolution engine and unit test; add get_reproductor_group/get_victim_group to interface and update deterministic engine signatures
+
+commit 563270c682119f3b1d2dbc15d0baafa3ebc7216f
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 15:06:31 2026 +0100
+
+    KATA05: Refactor population evolution (append/remove), add EvolutionEngine interface and deterministic implementation, update Simulator to use engine, adjust tests, and expand README katas
+
+commit 7989ae327dc156f3ba3bca598880fc70a16d1a06
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 14:46:46 2026 +0100
+
+    KATAS 03 and 04: Add deterministic evolution to Population; add simulator, tests, and requirements
+
+commit 1952e1160b9d281e9a1adfba00aef7d7497a8a92
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 14:18:25 2026 +0100
+
+    KATA 02: Add SubPopulation, refactor Population to use it and track fitness; add methods to get highest/lowest fitness and update tests accordingly
+
+commit 528039fc7dfdb5ac682ec786092fd286150b596d
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 14:07:46 2026 +0100
+
+    Support per-group fitness in Population; accept group info as int or dict with 'n' and 'fitness' (default 1.0). Rename test_population to test_population_kata_01_minimal_builder and add test_population_kata_02_basic_fitness.
+
+commit dd02060ef272d671a50b6fc71df31904d69f12e5
+Author: Luis P <lpalomerol@gmail.com>
+Date:   Sat Mar 14 13:46:23 2026 +0100
+
+    Add population genetics simulation with tests and CI instructions
+
+commit 1e312a60b0f5acff9a7fd1007cf8b721d52f7b1f
+Author: l-palomero <lpalomerol@gmail.com>
+Date:   Fri Mar 13 14:25:31 2026 +0100
+
+    Initial commit

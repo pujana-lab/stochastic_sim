@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 #TODO: COnvertir en funcion para que me saque solo la figura y luego llamarla desde fuera y guardarlo como quiera 
-file_path = 'history.csv'
+file_path = 'history.parquet'
 
 dtypes = {
     'time': 'float64',
@@ -13,7 +13,7 @@ dtypes = {
 }
 
 print("Loading data...")
-df = pd.read_csv(file_path, dtype=dtypes)
+df = pd.read_parquet(file_path)
 
 print("Processing and aggregating populations...")
 # 1. Agrupamos por tiempo y tipo para sumar las N de todos los clones en cada instante

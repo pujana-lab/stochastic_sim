@@ -1,42 +1,54 @@
+from __future__ import annotations
+
 from pathlib import Path
 import json as _json
 
+from src.gillespie.simulation_config import CellTypeConfig
 
-_CELL_TYPE_MAP: dict[str, dict[str, str]] = {
-    "base": {
-        "N": "N0",
-        "lambda_0": "lambda0",
-        "mu": "mu0",
-        "nu": "nu0",
-        "K": "K0",
-    },
-    "immune": {
-        "N": "N_immune",
-        "lambda_0": "lambda_Immune",
-        "mu": "omega_exhaust",
-        "K": "K_immune",
-    },
-    "mutated": {
-        "N": "N_mutant",
-        "K": "K_mutant",
-    },
-    "exhausted": {
-        "N": "N_exhausted",
-        "mu": "mu_Exhausted",
-    },
+
+_CELL_TYPE_FIELD_MAP = {
+    "N": "N",
+    "K": "K",
+    "lambda_0": "lambda0",
+    "lambda0": "lambda0",
+    "mu": "mu",
+    "nu": "nu",
+    "omega_exhaust": "omega_exhaust",
+    "next_mutation": "next_mutation",
+    "fitness_gain": "fitness_gain",
 }
 
+_ALLOWED_CELL_TYPES = {"base", "immune", "mutated", "exhausted"}
+
+
+def _coerce_cell_type_config(raw: dict | CellTypeConfig) -> CellTypeConfig:
+    if isinstance(raw, CellTypeConfig):
+        return raw
+    if not isinstance(raw, dict):
+        raise TypeError(f"Cell type config must be a dict or CellTypeConfig, got {type(raw).__name__}")
+
+    mapped = {}
+    for key, value in raw.items():
+        if key in _CELL_TYPE_FIELD_MAP:
+            mapped[_CELL_TYPE_FIELD_MAP[key]] = value
+    print(f"Mapped cell type config: {mapped}")
+    return CellTypeConfig(**mapped)
+
+
 def flatten_cell_types(raw: dict) -> dict:
-    result = {}
-    for ct_name, ct_params in raw.get("cell_types", {}).items():
-        mapping = _CELL_TYPE_MAP.get(ct_name)
-        if mapping is None:
-            raise ValueError(f"Unknown cell type '{ct_name}' in config")
-        for inner_key, flat_key in mapping.items():
-            if inner_key in ct_params:
-                result[flat_key] = ct_params[inner_key]
+    result: dict = {}
+    cell_map = raw.get("cell_parameters") if "cell_parameters" in raw else raw.get("cell_types")
+
+    if cell_map is not None:
+        converted: dict[str, CellTypeConfig] = {}
+        for cell_name, spec in cell_map.items():
+            if cell_name not in _ALLOWED_CELL_TYPES:
+                raise ValueError(f"Unknown cell type '{cell_name}' in config")
+            converted[cell_name] = _coerce_cell_type_config(spec)
+        result["cell_parameters"] = converted
+
     for k, v in raw.items():
-        if k != "cell_types":
+        if k not in {"cell_types", "cell_parameters"}:
             result[k] = v
     return result
 

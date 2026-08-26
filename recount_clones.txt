@@ -1,0 +1,41 @@
+## Summary
+| Metric | Value |
+|---|---:|
+| Seed | seed_0060 |
+| Clones created (numeric + mutated_root) | 59 |
+| Clones extinct (final N=0) | 32 |
+| Clones escaped | 27 |
+| % extinct | 54.24% |
+| % non-extinct (escape at final time) | 45.76% |
+| Immune time to extinction | 2792.9355 |
+| Final time | 6000.0000 |
+
+## Burden And Immune Control
+| Metric | Value |
+|---|---:|
+| Immune final | 0 |
+| Root final | 0 |
+| Mutated root final | 2 |
+| Exhausted final | 0 |
+| Final recount cells (numeric + mutated_root) | 804 |
+| Final tumor burden (excluding immune/exhausted) | 804 |
+| Final recount/immune ratio | inf |
+
+## Clonal Dominance
+| Metric | Value |
+|---|---:|
+| Recount survivors | 27 |
+| Cells in survivors | 804 |
+| Mean N in survivors | 29.78 |
+| Median N in survivors | 23.00 |
+| Top-1 % of survivor burden | 17.04% |
+| Top-5 % of survivor burden | 50.50% |
+
+## Top 5 surviving clones
+| clone_id | Final N |
+|---:|---:|
+| 12 | 137 |
+| 11 | 81 |
+| 6 | 76 |
+| 13 | 58 |
+| 7 | 54 |
