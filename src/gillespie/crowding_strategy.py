@@ -42,8 +42,10 @@ class CrowdingStrategy(ABC):
         ...
 
 class SimpleCrowding(CrowdingStrategy):
-    def calculate_K(self, clone: "Clone", t: float) -> float:
+    def calculate_K(self, clone: "Clone") -> float:
         # Aseguramos que clone.K_min sea como mínimo 1.0 en la configuración de tus objetos
+        if clone.birth_rate <= 0.0:
+                    return float('inf')
         k_floor = max(1.0, getattr(clone, 'K_min', 1.0))
         
         return max(k_floor, clone.K)
