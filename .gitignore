@@ -8,7 +8,9 @@ __pycache__/
 # Ignore csv
 *.csv
 *.png
-
+*.parquet
+*.txt
+*.svg
 results/multi_seed_runs
 
 # Distribution / packaging
