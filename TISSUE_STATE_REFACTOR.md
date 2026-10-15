@@ -1,5 +1,8 @@
 # Refactorización: Aislamiento del Tissue State
 
+> **Historical implementation note.** Verify all examples against the current
+> source and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) before reusing them.
+
 ## Objetivo
 Aislar el estado del tejido (conjunto de clones) como un objeto independiente (`TissueState`) para:
 - Facilitar el historial de estados del sistema en el tiempo

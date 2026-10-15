@@ -1,5 +1,9 @@
 # CloneType Refactoring: Problems & Solutions
 
+> **Historical design note.** This document records a proposed refactor. It is
+> not the current implementation contract; consult
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and `src/gillespie/` first.
+
 ## Executive Summary
 
 The current `CloneType` enum creates unnecessary complexity and maintenance burden. The type information exists in two places (class hierarchy + enum), leading to confusion, redundant conversions, and scattered type checks throughout the codebase.

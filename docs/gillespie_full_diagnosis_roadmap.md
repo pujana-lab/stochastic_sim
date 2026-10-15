@@ -1,5 +1,9 @@
 # Diagnóstico completo y roadmap para corregir la implementación Gillespie / ODE
 
+> **Historical diagnosis.** The claims and proposed fixes below describe an
+> earlier investigation. They are not a current specification; use
+> [`ARCHITECTURE.md`](ARCHITECTURE.md) and the source/tests as the authority.
+
 ## Resumen ejecutivo
 
 Hay un problema estructural en la implementación actual: el modelo estocástico y el modelo determinista no están representando la misma dinámica. La diferencia no es solo ruido estocástico; hay un desajuste conceptual y varios bugs de cálculo que hacen que la simulación Gillespie no sea comparable con el sistema ODE que se usa para visualizarla.
