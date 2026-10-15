@@ -1,10 +1,9 @@
 ---
-name: Run Gillespie checks
-description: "Run focused or full tests for the Gillespie simulator and explain failures in the context of the current architecture."
+name: run-gillespie-checks
+description: Run focused or full tests for the Gillespie simulator and explain failures in the context of the current architecture.
+disable-model-invocation: true
 argument-hint: "Optional: provide a test path or change area"
-agent: "Gillespie Developer"
 ---
-
 Run the smallest relevant checks for the requested area, beginning with:
 
 ```bash

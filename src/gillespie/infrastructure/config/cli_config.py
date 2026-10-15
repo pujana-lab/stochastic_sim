@@ -64,6 +64,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--save-all-steps", dest="save_all_steps", action=argparse.BooleanOptionalAction, default=defaults["save_all_steps"])
     p.add_argument("--save-interval", dest="save_interval", type=int, default=defaults["save_interval"])
     p.add_argument("--omega", dest="OMEGA", type=int, default=defaults["OMEGA"])
+    p.add_argument("--save-history", type=Path, default=None, help="Write long-format history parquet.")
+    p.add_argument("--save-clones", type=Path, default=None, help="Write final clone states parquet.")
+    p.add_argument("--save-debug", type=Path, default=None, help="Write full debug trace parquet (all fields + event).")
+    p.add_argument("--top", type=int, default=10, help="How many largest final clones to print.")
     return p
 
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-from numba import optional
 import numpy as np
 from tqdm import tqdm
 from src.gillespie.cloneId import CloneId

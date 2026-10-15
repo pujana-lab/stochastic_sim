@@ -48,7 +48,7 @@ def flatten_cell_types(raw: dict) -> dict:
         result["cell_parameters"] = converted
 
     for k, v in raw.items():
-        if k not in {"cell_types", "cell_parameters"}:
+        if k not in {"cell_types", "cell_parameters", "_calculator"}:
             result[k] = v
     return result
 

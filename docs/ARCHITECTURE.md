@@ -77,6 +77,15 @@ Cell-type settings are nested under `cell_parameters`. JSON aliases such as
 Do not add a second configuration format without updating that adapter and its
 tests.
 
+The dimensional-to-Gillespie calculator is implemented in
+[`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py).
+It emits a valid JSON configuration and records the physical and
+dimensionless values in an ignored `_calculator` metadata section. `OMEGA`
+is the population/system-size scale: interaction coefficients are divided by
+`OMEGA` once, while dimensionless capacities are converted to
+`OMEGA * K`. `AdaptedCrowding` then inflates `actual_K` by
+`1 / (1 - mu / lambda)` to make the requested baseline homeostatic.
+
 ## Event lifecycle
 
 For every simulation step:

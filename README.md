@@ -320,3 +320,20 @@ make test
 
 - [`cellSim`](https://github.com/pujana-lab/cellSim) — individual-based model of genomic-instability accumulation and TP53-gated apoptosis; intended calibration source for the `instability` term above.
 - Deterministic three-population model (tumor / active immune / exhausted immune) providing the mean-field limit this simulator extends, developed within the Pujana Lab's mathematical modeling of *BRCA1*-related breast cancer initiation.
+# Parameter calculator
+
+The report-defined dimensional and dimensionless parameters can be converted
+to a Gillespie JSON configuration with:
+
+```bash
+python3 -m src.gillespie.application.scaling_calculator \
+  --output calculator.json \
+  --lambda-c 0.005 --lambda-i 0.005 \
+  --mu-c 0.002 --mu-e 0.001 \
+  --theta 0.0005 --beta 0.0004 --omega 0.003 \
+  --k-c 4000 --k-i 2000 --c0 100 --i0 50 --e0 0
+```
+
+The generated file is accepted by the normal `--config` loader. Its
+`_calculator` section preserves the physical and dimensionless values for
+traceability; the runtime ignores that metadata.

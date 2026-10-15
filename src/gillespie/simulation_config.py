@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, TYPE_CHECKING
 from src.gillespie.cloneId import CloneId
 import numpy as np
@@ -106,6 +106,8 @@ class SimulationConfig:
         for cell_type, config in self.cell_parameters.items():
             if isinstance(config, CellTypeConfig):
                 cfg = config
+                if cfg.default_id is None and cell_type in _DEFAULT_CELL_PARAMETERS:
+                    cfg = replace(cfg, default_id=_DEFAULT_CELL_PARAMETERS[cell_type].default_id)
             elif isinstance(config, dict):
                 payload = dict(config)
                 if "default_id" not in payload and cell_type in _DEFAULT_CELL_PARAMETERS:

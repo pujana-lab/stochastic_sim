@@ -131,3 +131,12 @@ def test_flatten_current_nested_schema_builds_valid_simulation_config():
     assert config.cell_parameters["base"].next_mutation == "mutated"
     assert config.cell_parameters["mutated"].fitness_gain == 0.2
     assert config.T_max == 1000
+
+
+def test_json_cell_types_get_default_clone_ids():
+    from src.gillespie.simulation_config import SimulationConfig
+
+    raw = {"cell_types": {name: {"N": 1} for name in ("base", "immune", "mutated", "exhausted")}}
+    config = SimulationConfig(**flatten_cell_types(raw))
+    ids = {name: cfg.default_id for name, cfg in config.cell_parameters.items()}
+    assert ids == {"base": (), "immune": (-1,), "mutated": (-3,), "exhausted": (-2,)}
