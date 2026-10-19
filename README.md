@@ -65,16 +65,16 @@ Once the environment is ready, run the Gillespie CLI directly:
 python src/gillespie/infrastructure/cli.py --help
 ```
 
-The CLI accepts the same simulation parameters used by `SimulationConfig`, such as:
+Cell-type parameters are configured in a nested JSON file under
+`cell_parameters`; simulation-level CLI flags can override the JSON values:
 
 ```bash
 python src/gillespie/infrastructure/cli.py \
-  --N0 50 \
-  --lambda0 0.25 --mu0 0.25 --nu0 0.0 \
+  --config configs/gillespie_defaults.json \
   --T-max 20 \
   --seed 42 \
-  --save-history results.csv \
-  --save-debug debug.csv
+  --save-history results.parquet \
+  --save-debug debug.parquet
 ```
 
 This runs a Gillespie trajectory and writes Parquet output for history, rates,

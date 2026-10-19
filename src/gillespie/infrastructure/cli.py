@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.gillespie.infrastructure.config.cli_config import build_parser, get_explicit_cli_args, parse_args
-from src.gillespie.infrastructure.config.json_config import flatten_cell_types, load_config_json
+from src.gillespie.infrastructure.config.json_config import load_config_json
 from src.gillespie.infrastructure.csv_output import (
     save_clones_parquet,
     save_debug_history_parquet,
@@ -21,7 +21,7 @@ def main() -> None:
 
     base: dict = {}
     if args.config is not None:
-        base = flatten_cell_types(load_config_json(args.config))
+        base = load_config_json(args.config)
         print(base)
     cli_overrides = get_explicit_cli_args(args, parser)
     base.update(cli_overrides)

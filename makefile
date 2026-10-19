@@ -24,22 +24,20 @@ run-all:
 
 # ── Gillespie examples ────────────────────────────────────────────────────────
 # Scenario 1: homeostasis — birth rate == death rate, no mutation.
-# Population fluctuates around N0 and may go extinct.
+# Population fluctuates around the base population configured in JSON.
 gillespie-homeostasis:
 	$(GILLESPIE) \
-	  --N0 50 \
-	  --lambda0 0.25 --mu0 0.25 --nu0 0.00 \
+	  --config configs/gillespie_defaults.json \
 	  --T-max 20 --seed 42 \
 	  --save-history results_gillespie_homeostasis.csv \
 	  --save-debug results_gillespie_homeostasis_debug.csv
 
 # Scenario 2: tumour growth with genomic instability and clonal evolution.
-# lambda_0 > mu drives net growth; nu0 > 0 generates mutant subclones that
+# lambda0 > mu drives net growth; nu > 0 generates mutant subclones that
 # accumulate instability over time.
 gillespie-tumour-growth:
 	$(GILLESPIE) \
-	  --N0 20 \
-	  --lambda0 0.35 --mu0 0.20 --nu0 0.01 \
+	  --config configs/gillespie_defaults.json \
 	  --instability-0 0.1 --buildup-0 0.0 \
 	  --base-instability-buildup 0.005 \
 	  --mutation-instability-jump 0.05 \
@@ -50,15 +48,13 @@ gillespie-tumour-growth:
 	  --save-debug results_gillespie_tumour_growth_debug.csv \
 	  --top 15
 
-# Scenario 3: logistic crowding — tumour growth with carrying capacity K0.
+# Scenario 3: logistic crowding — tumour growth with carrying capacity K.
 # Population grows until resource competition (crowding) limits expansion,
 # modelling competition for space and nutrients inside a tumour niche.
 gillespie-crowding:
 	$(GILLESPIE) \
-	  --N0 20 \
-	  --lambda0 0.35 --mu0 0.20 --nu0 0.01 \
+	  --config configs/gillespie_defaults.json \
 	  --use-logistic \
-	  --K0 500 \
 	  --instability-0 0.1 \
 	  --base-instability-buildup 0.005 \
 	  --mutation-instability-jump 0.05 \

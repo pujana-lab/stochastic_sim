@@ -1,5 +1,5 @@
 import pytest
-from src.gillespie.clone import Clone
+from src.gillespie.clone import Clone, WildTypeClone
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone_factory import CloneFactory
 from src.gillespie.tissue_state import TissueState
@@ -19,30 +19,36 @@ def make_clone(**kwargs) -> Clone:
     )
     defaults.update(kwargs)
     
-    config = SimulationConfig(
-        lambda0=defaults["birth_rate"], 
-        mu0=defaults["death_rate"], 
-        nu0=defaults["mutation_rate"]
-    )
-    clone = Clone(clone_id=defaults["clone_id"], N=defaults["N"], config=config)
+    config = SimulationConfig(cell_parameters={
+        "base": {
+            "N": defaults["N"],
+            "lambda0": defaults["birth_rate"],
+            "mu": defaults["death_rate"],
+            "nu": defaults["mutation_rate"],
+            "K": 100,
+        },
+        "mutated": {"K": 100},
+        "exhausted": {"K": 100},
+        "immune": {"K": 100},
+    }, use_logistic=False)
+    clone = WildTypeClone(clone_id=defaults["clone_id"], N=defaults["N"], config=config)
     for attr in ("instability", "buildup", "d1", "d2"):
         setattr(clone, attr, defaults[attr])
     return clone
 
 def make_tissue_state(clone: Clone) -> TissueState:
-    return TissueState(clones={clone.clone_id: clone})
+    return TissueState(clones={clone.clone_id: clone}, t=0.0)
 
 def make_clone_factory():
     config = SimulationConfig(
-        N0=10,
-        lambda0=0.5,
-        mu0=0.2,
-        nu0=0.01,
+        cell_parameters={
+            "base": {"N": 10, "lambda0": 0.5, "mu": 0.2, "nu": 0.01},
+            "mutated": {"N": 1, "fitness_gain": 0.1, "K": 100},
+        },
         instability_0=0.0,
         buildup_0=0.0,
         d1_0=0.0,
         d2_0=0.0,
-        fitness_gain=0.1,
         mutation_instability_jump=0.05,
         mutation_buildup_gain=0.02,
         seed=42
@@ -84,13 +90,14 @@ def test_birth_rate_effective_proportional_to_N():
     c = make_clone(birth_rate=0.5, N=10)
     ts = make_tissue_state(c)
     # effective = birth_rate * N * crowding = 0.5 * 10 * 1
-    assert c.birth_rate_effective(tissue_state=ts, crowding=1) == pytest.approx(5.0)
+    assert c.birth_rate_effective(tissue_state=ts) == pytest.approx(5.0)
 
 def test_birth_rate_effective_zero_crowding():
     c = make_clone(birth_rate=0.5, N=10)
     ts = make_tissue_state(c)
     # effective = birth_rate * N * 0
-    assert c.birth_rate_effective(tissue_state=ts, crowding=0) == pytest.approx(0.0)
+    c.config.crowding_strategy.crowding = lambda *_args, **_kwargs: 0.0
+    assert c.birth_rate_effective(tissue_state=ts) == pytest.approx(0.0)
 
 def test_death_rate_effective_proportional_to_N():
     c = make_clone(death_rate=0.2, N=10)
@@ -156,8 +163,8 @@ def test_clone_factory_create_clone():
     clone = factory.create_clone(clone_id, clone_type="mutated")
     assert clone.clone_id == clone_id
     assert clone.N == 1
-    assert clone.birth_rate == 0.55
-    assert clone.death_rate == 0.2
+    assert clone.birth_rate == pytest.approx(0.0055)
+    assert clone.death_rate == 0.002
     assert clone.mutation_rate == 0.0
     assert clone.instability == 0.0
     assert clone.get_type() == "mutated"

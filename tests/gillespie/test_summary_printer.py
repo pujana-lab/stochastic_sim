@@ -1,13 +1,13 @@
 from io import StringIO
 
-from src.gillespie.clone import Clone
+from src.gillespie.clone import WildTypeClone
 from src.gillespie.cloneId import CloneId
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.infrastructure.display.summary_printer import print_summary
 
 
-def _make_clone(clone_id: CloneId, N: int, config: SimulationConfig) -> Clone:
-    c = Clone(clone_id=clone_id, N=N, config=config)
+def _make_clone(clone_id: CloneId, N: int, config: SimulationConfig) -> WildTypeClone:
+    c = WildTypeClone(clone_id=clone_id, N=N, config=config)
     c.birth_rate = 0.5
     c.death_rate = 0.2
     return c

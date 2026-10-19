@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from src.gillespie.infrastructure.csv_output import (
@@ -11,6 +10,7 @@ from src.gillespie.infrastructure.csv_output import (
 )
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
+from src.gillespie.infrastructure.config.json_config import load_config_json
 
 
 def save_config_text(config: SimulationConfig, path: Path) -> None:
@@ -36,13 +36,12 @@ def build_base_params(config_path: Path | None) -> dict:
     if config_path is None:
         return base
 
-    with config_path.open() as f:
-        raw = json.load(f)
+    raw = load_config_json(config_path)
 
     for key, value in raw.items():
         if key == "cell_parameters":
             base[key] = value
-        elif key != "cell_types" and key in SimulationConfig.__dataclass_fields__:
+        elif key in SimulationConfig.__dataclass_fields__:
             base[key] = value
 
     base.pop("seed", None)

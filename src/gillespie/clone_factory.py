@@ -29,10 +29,11 @@ class CloneFactory:
             )
 
             clone.next_mutation = "mutated"
-            clone.mutation_rate = self.config.nu0 * (1.0 + self.config.fitness_gain)
-            clone.birth_rate = self.config.lambda0 * (1.0 + self.config.fitness_gain)
+            mutated = self.config.cell_parameters["mutated"]
+            clone.mutation_rate = mutated.nu
+            clone.birth_rate = mutated.lambda0
             clone.death_rate = 0
-            clone.K = self.config.K_mutant
+            clone.K = mutated.K
             return clone
        
         elif clone_type not in Clone._registry:
@@ -46,4 +47,3 @@ class CloneFactory:
             parent=parent
         )
         return clone
-

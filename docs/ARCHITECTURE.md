@@ -24,7 +24,7 @@ JSON file and/or CLI arguments
               |
               v
 infrastructure.config
-  load_config_json -> flatten_cell_types
+  load_config_json -> nested cell_parameters
   cli_config      -> explicit CLI overrides
               |
               v
@@ -71,11 +71,11 @@ Configuration is merged in this order:
 2. JSON supplied with `--config`
 3. explicitly supplied CLI flags
 
-Cell-type settings are nested under `cell_parameters`. JSON aliases such as
-`lambda_0` are normalised by
-[`flatten_cell_types`](../src/gillespie/infrastructure/config/json_config.py).
-Do not add a second configuration format without updating that adapter and its
-tests.
+Cell-type settings are nested under `cell_parameters`, with the same field
+names as [`CellTypeConfig`](../src/gillespie/simulation_config.py). This is the
+only supported JSON configuration schema. The JSON loader removes optional
+`_calculator` provenance metadata before constructing `SimulationConfig`; it
+does not translate legacy flat fields or the former `cell_types` schema.
 
 The dimensional-to-Gillespie calculator is implemented in
 [`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py).

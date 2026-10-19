@@ -1,21 +1,21 @@
 {
-  "cell_types": {
+  "cell_parameters": {
     "base": {
       "N": 0,
-      "lambda_0": 0.005,
+      "lambda0": 0.005,
       "mu": 0.002,
       "nu": 0.0002,
       "K": 100
     },
     "immune": {
       "N": 4,
-      "lambda_0": 0,
+      "lambda0": 0,
       "mu": 0,
       "K": 50
     },
     "mutated": {
       "N": 3,
-      "lambda_0": 0.5,
+      "lambda0": 0.5,
       "K": 0
     },
     "exhausted": {

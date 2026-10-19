@@ -8,24 +8,41 @@ from src.gillespie.tissue_state import TissueState
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 def make_clone(birth_rate=0.5, death_rate=0.2, N=10) -> Clone:
-    cfg = SimulationConfig(lambda0=birth_rate, mu0=death_rate)
-    clone = Clone(clone_id=(), N=N, config=cfg)
-    clone.K = cfg.K0
+    cfg = SimulationConfig(
+        cell_parameters={"base": {"lambda0": birth_rate, "mu": death_rate, "K": 100}},
+        scale=False,
+    )
+    clone = WildTypeClone(clone_id=(), N=N, config=cfg)
+    clone.K = cfg.cell_parameters["base"].K
     return clone
 
 
 def make_wt_clone(N=10, birth_rate=0.5, death_rate=0.2, **kw) -> WildTypeClone:
-    cfg = SimulationConfig(lambda0=birth_rate, mu0=death_rate, K0=kw.pop("K0", 100), **kw)
+    cfg = SimulationConfig(
+        cell_parameters={
+            "base": {
+                "lambda0": birth_rate,
+                "mu": death_rate,
+                "K": kw.pop("K0", 100),
+            }
+        },
+        use_logistic_adapted=False,
+        scale=False,
+        **kw,
+    )
     return WildTypeClone(clone_id=(), N=N, config=cfg)
 
 
 def make_tissue_state(clone) -> TissueState:
-    return TissueState(clones={clone.clone_id: clone})
+    return TissueState(clones={clone.clone_id: clone}, t=0.0)
 
 
 def simple_config(**kwargs) -> SimulationConfig:
-    defaults = dict(use_logistic=True, use_logistic_adapted=False, K0=100.0, decline=0.0, Kmin=1.0)
+    defaults = dict(use_logistic=True, use_logistic_adapted=False, decline=0.0, Kmin=1.0)
+    carrying_capacity = kwargs.pop("K0", 100.0)
     defaults.update(kwargs)
+    defaults["cell_parameters"] = {"base": {"K": carrying_capacity}}
+    defaults["scale"] = False
     return SimulationConfig(**defaults)
 
 
@@ -36,33 +53,33 @@ class TestSimpleCrowding:
         cfg = simple_config(use_logistic=False)
         strategy = SimpleCrowding(cfg)
         c = make_clone()
-        assert strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c)) == 1.0
+        assert strategy.crowding(c, tissue_state=make_tissue_state(c)) == 1.0
 
     def test_empty_population_returns_one(self):
         cfg = simple_config(K0=100.0)
         strategy = SimpleCrowding(cfg)
         c = make_clone(N=0)
-        assert strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c)) == 1.0
+        assert strategy.crowding(c, tissue_state=make_tissue_state(c)) == 1.0
 
     def test_at_capacity_returns_zero(self):
         cfg = simple_config(K0=100.0)
         strategy = SimpleCrowding(cfg)
         c = make_wt_clone(N=100)
-        result = strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c))
+        result = strategy.crowding(c, tissue_state=make_tissue_state(c))
         assert result == pytest.approx(0.0)
 
     def test_above_capacity_clamped_to_zero(self):
         cfg = simple_config(K0=100.0)
         strategy = SimpleCrowding(cfg)
         c = make_wt_clone(N=200)
-        result = strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c))
+        result = strategy.crowding(c, tissue_state=make_tissue_state(c))
         assert result == 0.0
 
     def test_crowding_between_zero_and_one(self):
         cfg = simple_config(K0=100.0)
         strategy = SimpleCrowding(cfg)
         c = make_wt_clone(N=50)
-        result = strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c))
+        result = strategy.crowding(c, tissue_state=make_tissue_state(c))
         assert 0.0 <= result <= 1.0
 
     def test_K_declines_with_time(self):
@@ -70,15 +87,19 @@ class TestSimpleCrowding:
         strategy = SimpleCrowding(cfg)
         c = make_clone()
         ts = make_tissue_state(c)
-        c0 = strategy.crowding(c, t=0.0, tissue_state=ts)
-        c10 = strategy.crowding(c, t=10.0, tissue_state=ts)
+        ts.t = 0.0
+        c0 = strategy.crowding(c, tissue_state=ts)
+        ts.t = 10.0
+        c10 = strategy.crowding(c, tissue_state=ts)
         assert c10 <= c0
 
     def test_K_never_below_Kmin(self):
         cfg = simple_config(K0=100.0, decline=1000.0, Kmin=10.0)
         strategy = SimpleCrowding(cfg)
         c = make_clone()
-        result = strategy.crowding(c, t=1000.0, tissue_state=make_tissue_state(c))
+        tissue = make_tissue_state(c)
+        tissue.t = 1000.0
+        result = strategy.crowding(c, tissue_state=tissue)
         assert result >= 0.0
 
 
@@ -89,20 +110,20 @@ class TestAdaptedCrowding:
         cfg = simple_config(use_logistic=False)
         strategy = AdaptedCrowding(cfg)
         c = make_clone()
-        assert strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c)) == 1.0
+        assert strategy.crowding(c, tissue_state=make_tissue_state(c)) == 1.0
 
     def test_result_is_non_negative(self):
         cfg = simple_config(K0=100.0)
         strategy = AdaptedCrowding(cfg)
         c = make_clone(birth_rate=0.5, death_rate=0.2)
-        result = strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c))
+        result = strategy.crowding(c, tissue_state=make_tissue_state(c))
         assert result >= 0.0
 
     def test_result_at_most_one(self):
         cfg = simple_config(K0=100.0)
         strategy = AdaptedCrowding(cfg)
         c = make_clone(birth_rate=0.5, death_rate=0.2)
-        result = strategy.crowding(c, t=0.0, tissue_state=make_tissue_state(c))
+        result = strategy.crowding(c, tissue_state=make_tissue_state(c))
         assert result <= 1.0
 
     def test_higher_fitness_yields_higher_effective_birth_rate(self):
@@ -112,6 +133,6 @@ class TestAdaptedCrowding:
         c_high = make_clone(birth_rate=0.8, death_rate=0.2, N=10)
         ts_low = make_tissue_state(c_low)
         ts_high = make_tissue_state(c_high)
-        rb_low  = c_low.birth_rate_effective(tissue_state=ts_low, crowding=0.5)
-        rb_high = c_high.birth_rate_effective(tissue_state=ts_high, crowding=0.5)
+        rb_low  = c_low.birth_rate_effective(tissue_state=ts_low)
+        rb_high = c_high.birth_rate_effective(tissue_state=ts_high)
         assert rb_high > rb_low

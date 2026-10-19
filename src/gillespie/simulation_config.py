@@ -54,7 +54,6 @@ class SimulationConfig:
     OMEGA: int = 4000 #NUMERO MAXIMO DE CELULAS WT QUE SOPORTA CUANDO NO HAY COMPETICION
     
     
-    #TODO: IMPORTANTE: Mover los parametros de las celulas de flat a por tipo. que tengan un string acorde con el tipo y se puedan acceder al crear celulas como my_defaults=self.config.params("cell_type") y luego hacer birth_rate=my_defaults.lambda0
     cell_parameters: dict[str, CellTypeConfig] = field(default_factory=lambda : dict(_DEFAULT_CELL_PARAMETERS))
  
     # simulation control
@@ -102,17 +101,19 @@ class SimulationConfig:
 
 #TODO: entender esto 
     def _normalize_cell_parameters(self) -> None:
-        normalized = {}
+        normalized = dict(_DEFAULT_CELL_PARAMETERS)
         for cell_type, config in self.cell_parameters.items():
+            default = _DEFAULT_CELL_PARAMETERS.get(cell_type)
             if isinstance(config, CellTypeConfig):
                 cfg = config
-                if cfg.default_id is None and cell_type in _DEFAULT_CELL_PARAMETERS:
-                    cfg = replace(cfg, default_id=_DEFAULT_CELL_PARAMETERS[cell_type].default_id)
+                if cfg.default_id is None and default is not None:
+                    cfg = replace(cfg, default_id=default.default_id)
             elif isinstance(config, dict):
                 payload = dict(config)
-                if "default_id" not in payload and cell_type in _DEFAULT_CELL_PARAMETERS:
-                    payload["default_id"] = _DEFAULT_CELL_PARAMETERS[cell_type].default_id
-                cfg = CellTypeConfig(**payload)
+                if default is not None:
+                    cfg = replace(default, **payload)
+                else:
+                    cfg = CellTypeConfig(**payload)
             else:
                 raise TypeError(...)
             normalized[cell_type] = cfg
@@ -199,4 +200,3 @@ class SimulationConfig:
         strategy_class = AdaptedCrowding if self.use_logistic_adapted else SimpleCrowding
         object.__setattr__(self, 'crowding_strategy', strategy_class(self))
  
-

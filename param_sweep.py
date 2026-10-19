@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import copy
-import json
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -13,13 +12,14 @@ from src.gillespie.infrastructure.csv_output import (
 )
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
+from src.gillespie.infrastructure.config.json_config import load_config_json
 
 
 # 5 Combinaciones distintas de (gamma, omega)
 PARAM_COMBINATIONS = [
-    # {"gamma": 0.10, "omega": 0.50, "name": "azul"},
-    # {"gamma": 0.10, "omega": 0.80, "name": "roja"},
-    # {"gamma": 0.7, "omega": 0.30, "name": "verde"},
+    {"gamma": 0.10, "omega": 0.50, "name": "azul"},
+    {"gamma": 0.10, "omega": 0.80, "name": "roja"},
+    {"gamma": 0.7, "omega": 0.30, "name": "verde"},
     {"gamma": 0.30, "omega": 0.90,"N_immune": 100, "N_mutated": 100, "name": "roj_verde_1"},
     {"gamma": 0.30, "omega": 0.90,"N_immune": 1200, "N_mutated": 100, "name": "roj_verde_2"},
 ]
@@ -67,12 +67,9 @@ def save_config_snapshot(config: SimulationConfig, path: Path) -> None:
 def load_base_params(config_path: Path | None) -> dict:
     """Carga parametros base desde JSON o usa los defaults de SimulationConfig."""
     if config_path and config_path.exists():
-        with config_path.open() as f:
-            raw = json.load(f)
-        return raw
+        return load_config_json(config_path)
 
-    # Valores base por defecto si no se especifica JSON
-    
+    return {}
 
 def main() -> None:
     parser = argparse.ArgumentParser(
