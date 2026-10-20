@@ -7,6 +7,9 @@ from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 
 
+_ZERO_RATES: Dict[str, float] = {"rb": 0.0, "rd": 0.0, "rm": 0.0, "re": 0.0}
+
+
 @dataclass
 class TissueState:
     """Encapsulates the complete state of the tissue at a given time.
@@ -18,6 +21,8 @@ class TissueState:
     ## igual es mejor guardar como array de clones 
     clones: Dict[CloneId, 'Clone']  # type: ignore
     pop_map: Dict[str, int] = field(init=False)
+    # Effective (total) rates per clone, written by TumorSimulation._build_rate_matrix
+    effective_rates: Dict[CloneId, Dict[str, float]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.update_pop_map()
@@ -87,13 +92,10 @@ class TissueState:
         return {
             cid: {
                 "Type": clone.get_type(),
-                #TODO: Aqui hay que poner que sea *_rate_effective(), pero no se como hacerlo sin hacer loop de imports
                 "N": clone.N,
                 "t": self.t, 
-                "rb": clone.birth_rate,
-                "rd": clone.death_rate,
-                "rm": clone.mutation_rate,
-                "re": clone.exhaustion_rate,
+                # Effective rates of the clone (same values used by the RateMatrix)
+                **self.effective_rates.get(cid, _ZERO_RATES),
                 "instability": clone.instability,
                 "buildup": clone.buildup,
                 "K": clone.K

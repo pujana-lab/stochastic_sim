@@ -47,10 +47,12 @@ class TumorSimulation:
         self.crowding_strategy: CrowdingStrategy = self.config.crowding_strategy
 
         #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
+        # Rates of the current state; rebuilt after every event and reused by the next step
+        self._rate_matrix: Optional[RateMatrix] = self._build_rate_matrix()
+        rates0 = self._rate_matrix
         self.history: List[Dict[CloneId, dict]] = [self.tissue_state.snapshot()] if self.save_interval > 0 else []
         self.rate_history: List[List[Dict]] = [] if self.save_interval > 0 else []
         self.events: List[Optional[Event]] = [] if self.save_all_steps else []
-        rates0=self._build_rate_matrix()
         print("STARTING RATES AND STATE")
         self.tissue_state.print_pop_map()
         self.print_event_table(rates0.events)
@@ -72,6 +74,7 @@ class TumorSimulation:
         )
         self.tissue_state.clones[clone.clone_id] = clone
         self.tissue_state.update_pop_map()
+        self._rate_matrix = None
         return clone
 
     # ── Internal helpers ──────────────────────────────────────────────────────
@@ -81,28 +84,31 @@ class TumorSimulation:
             if clone.is_alive():
                 clone.advance_instability(dt, self.config.base_instability_buildup)
 
+    def _current_rate_matrix(self) -> RateMatrix:
+        if self._rate_matrix is None:
+            self._rate_matrix = self._build_rate_matrix()
+        return self._rate_matrix
+
     def _build_rate_matrix(self) -> RateMatrix:
+        """Build per-clone events and store the effective rates in the TissueState.
+
+        Each clone's rate is proportional to its own N (with type-level
+        interactions from pop_map), so summing the events of a type gives the
+        type-level rate without double counting.
+        """
         self.tissue_state.update_pop_map()
         rate_matrix = RateMatrix()
-        type_rates: Dict[str, tuple[float, float, float, float]] = {}
+        effective_rates: Dict[CloneId, Dict[str, float]] = {}
 
         for cid, clone in self.tissue_state.clones.items():
             if not clone.is_alive():
                 continue
-            
-            #BUG: aqui estamos mezclando dos logicas. Por una parte estamos asignando por clon y por otra parte por tipo. si hacemos por tipo deberiamos iterar por tipo si no por clon porque si no clones del mismo tipo cuentan varias veces sus rates. 
-            # Hay que decidir que hacemos con esto. si hacemos que todos los clones tengan la misma dinamica entonces no sabemos que clon estamos mutando y si diferenciamos tenemos que volver a calcular todo por cada clon. una opcion es hacer un refacotr y en dos partes primero calcular los rates basales y de cada fenotipo y luego ir por cada clon y multiplicarlos por el numero de clones que tenemos. esta logica se podria guardar en tissue stste de forma que los rates basales se calculen y luego el rate matrix pulee de ahi. 
-            #TODO: hay que volver a poner los rates por TIPO y simplemente a la hora de aplicar el evento tirar moneda para elegir cual clon de ese tipo prolifera/muere
-            
-            #TODO: est hay que meterlo a tissue_state para poder pintar en condiciones los rates REALES
-            type_rates: tuple[float,float,float,float]= (
-                clone.birth_rate_effective(tissue_state=self.tissue_state),
-                clone.death_rate_effective(tissue_state=self.tissue_state),
-                clone.mutation_rate_effective(tissue_state=self.tissue_state),
-                clone.exhaustion_rate_effective(tissue_state=self.tissue_state),
-            )
 
-            rb, rd, rm, re = type_rates
+            rb = clone.birth_rate_effective(tissue_state=self.tissue_state)
+            rd = clone.death_rate_effective(tissue_state=self.tissue_state)
+            rm = clone.mutation_rate_effective(tissue_state=self.tissue_state)
+            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
+            effective_rates[cid] = {"rb": rb, "rd": rd, "rm": rm, "re": re}
 
             if rb > 0:
                 rate_matrix.add_event(
@@ -120,6 +126,7 @@ class TumorSimulation:
                 rate_matrix.add_event(
                     Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.get_type())
                 )
+        self.tissue_state.effective_rates = effective_rates
         return rate_matrix
 
     def _sample_waiting_time(self, total_rate: float) -> float:
@@ -186,7 +193,7 @@ class TumorSimulation:
     def step(self, return_matrix: Optional[bool] = False) -> bool:
         """Advance by one Gillespie step. Returns False when simulation should stop."""
         self.step_count += 1
-        rate_matrix = self._build_rate_matrix()
+        rate_matrix = self._current_rate_matrix()
   
         if return_matrix == True:
             print(self.t)
@@ -217,6 +224,8 @@ class TumorSimulation:
             self._advance_all_instability(tau)
             self.t = self.config.T_max
             self.times.append(self.t)
+            self.tissue_state.t = self.t
+            self._rate_matrix = self._build_rate_matrix()
             # Always save final state
             self.history.append(self.tissue_state.snapshot())
             print("FINAL RATES AND STATE")
@@ -230,10 +239,11 @@ class TumorSimulation:
         
         event = rate_matrix.choose_event(self.rng.random())
         self._apply_event(event)
-        self.tissue_state.update_pop_map()
         
         self.times.append(self.t)
         self.tissue_state.t = self.t
+        # Rates of the post-event state: used by the snapshot below and by the next step
+        self._rate_matrix = self._build_rate_matrix()
         
         # Save snapshots conditionally
         if self.save_interval > 0 and self.step_count % self.save_interval == 0:

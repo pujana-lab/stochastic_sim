@@ -60,7 +60,6 @@ class Clone:
 
     def mutation_multiplier(self) -> float:
         return 1.0 + self.instability
-    #BUG: related to bug in tumor_simulation.py ahora mismo el birth rate va por tipo y no por clon. lo cual esta double counting 
     def birth_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.birth_rate * self.N * self.config.crowding_strategy.crowding(self,tissue_state=tissue_state) #NO ESTABA MULTIPLICANDO POR EL BIRTH RATE!!!
 

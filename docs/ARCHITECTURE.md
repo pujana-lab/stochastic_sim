@@ -90,17 +90,27 @@ is the population/system-size scale: interaction coefficients are divided by
 
 For every simulation step:
 
-1. `TissueState.update_pop_map()` refreshes aggregate populations.
-2. `TumorSimulation._build_rate_matrix()` asks each living clone for effective
-   rates and creates non-zero `Event` candidates.
-3. A waiting time is sampled from the total propensity.
-4. `RateMatrix.choose_event()` selects one event proportionally to its rate.
-5. The event mutates the selected clone or creates a child clone.
-6. Time, instability, and optional history are updated.
+1. The step reuses the `RateMatrix` of the current state (built at start-up or
+   at the end of the previous step; `create_clone()` invalidates it).
+2. A waiting time is sampled from the total propensity.
+3. `RateMatrix.choose_event()` selects one event proportionally to its rate.
+4. The event mutates the selected clone or creates a child clone.
+5. Time and instability are updated, then `TumorSimulation._build_rate_matrix()`
+   refreshes `pop_map`, asks each living clone for effective rates, creates the
+   non-zero `Event` candidates and stores the effective rates in
+   `TissueState.effective_rates`.
+6. Optional history is recorded.
 
-The per-clone event construction is an important current behaviour. Do not
-describe the implementation as type-aggregated Gillespie until that design is
-implemented and tested.
+The per-clone event construction is an important current behaviour. Each
+clone's rate is proportional to its own `N` (interactions read the type totals
+in `pop_map`), so the events of one type sum to the type-level propensity
+without double counting. Do not describe the implementation as type-aggregated
+Gillespie until that design is implemented and tested.
+
+`TissueState.snapshot()` reports `rb`, `rd`, `rm` and `re` as the **effective**
+per-clone rates of the snapshot's state (the same values in the `RateMatrix`),
+not the per-cell parameters; dead clones report `0.0`. The per-cell parameters
+remain available on the `Clone` objects and in `save_clones_parquet`.
 
 ## Verification flow
 
