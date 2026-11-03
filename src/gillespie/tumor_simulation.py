@@ -32,12 +32,11 @@ class TumorSimulation:
         # Initialize clones
         # clones_dict:Dict[CloneType,Clone]= {}
         # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
-        clones_dict: Dict[CloneId, Clone] = {
-            (): self.clone_factory.create_clone(clone_type="base"),
-            (-3,): self.clone_factory.create_clone(clone_type="mutated"),
-            (-1,): self.clone_factory.create_clone(clone_type="immune"),
-            (-2,): self.clone_factory.create_clone(clone_type="exhausted")
-        }
+        # One root clone per cell type, keyed by its default_id (see _DEFAULT_CELL_PARAMETERS)
+        clones_dict: Dict[CloneId, Clone] = {}
+        for clone_type in self.config.cell_parameters:
+            clone = self.clone_factory.create_clone(clone_type=clone_type)
+            clones_dict[clone.clone_id] = clone
         
         self.times: List[float] = [0.0]
         # Encapsulate tissue state
@@ -152,7 +151,7 @@ class TumorSimulation:
     
     def _induce_exhaustion(self, clone: Clone) -> None:
         self.tissue_state.clones[clone.clone_id].kill()
-        self.tissue_state.clones[(-2,)].divide()
+        self.tissue_state.clones[self.config.cell_parameters["exhausted"].default_id].divide()
     
     def _apply_event(self, event: Event) -> None:
         clone = self.tissue_state.clones[event.clone_id]

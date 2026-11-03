@@ -77,6 +77,14 @@ only supported JSON configuration schema. The JSON loader removes optional
 `_calculator` provenance metadata before constructing `SimulationConfig`; it
 does not translate legacy flat fields or the former `cell_types` schema.
 
+Each cell type has a `default_id`: the id of its root clone, which sits
+outside the mutation lineage (mutants get `parent_id + (k,)`). It is the only
+place where clone ids are defined. `TumorSimulation` creates one root clone
+per entry of `cell_parameters`, in that order, which is also the event order
+in the rate matrix (seeded runs depend on it). The output writers name the
+root clones from `default_id`. `SimulationConfig` rejects a cell type without
+a `default_id` or with one that another type already uses.
+
 The dimensional-to-Gillespie calculator is implemented in
 [`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py).
 It emits a valid JSON configuration and records the physical and

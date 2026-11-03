@@ -4,7 +4,7 @@
 > The living version, with comments, is the Claude Doc
 > [Multinomial tau-leaping: derivation and implementation plan](https://claude.ai/artifact/C6993NZENk9sW7743kCJCo).
 > If the two disagree, update this file from the doc. Exception: on 03-11-2026 this
-> file was aligned with the notation in `CLAUDE.md` ("Model notation") and the doc was not.
+> file was aligned with the notation in `docs/NOTATION.md` and the doc was not.
 
 ## 0. Summary
 
@@ -32,7 +32,7 @@ Design constraints:
 
 ## 2. Notation: the model as a reaction network
 
-Symbols follow the "Model notation" section of `CLAUDE.md` (Gillespie layer: `N_<type>`, `r_B, r_D, r_M, r_E`, crowding `g(Y, K_X)`). Where the tau-leaping literature uses letters that already mean something in the model, this plan renames them: firing counts are `R_j` (as `Event.reaction_number`; T&B and CGP call them K_j), state-change vectors are `s_j` (their ν_j; ν is the mutation rate here), and the CGP drift and variance of an observable are `d_k` and `v_k` (their μ_k, σ_k²).
+Symbols follow `docs/NOTATION.md` (Gillespie layer: `N_<type>`, `r_B, r_D, r_M, r_E`, crowding `g(Y, K_X)`). Where the tau-leaping literature uses letters that already mean something in the model, this plan renames them: firing counts are `R_j` (as `Event.reaction_number`; T&B and CGP call them K_j), state-change vectors are `s_j` (their ν_j; ν is the mutation rate here), and the CGP drift and variance of an observable are `d_k` and `v_k` (their μ_k, σ_k²).
 
 Every reaction in the model has the same shape. **A cell of clone i does something, at a per-cell rate that depends only on the type totals and on time.** That single property makes the multinomial leap exact per clone. It also lets the step-size control work on a handful of type-level quantities.
 
@@ -388,5 +388,5 @@ The leaper is accepted when, at ε = 0.03, every ensemble statistic below matche
 - Tian & Burrage (2004), [Binomial leap methods for simulating stochastic chemical kinetics](https://doi.org/10.1063/1.1810475), J. Chem. Phys. 121, 10356. Used here: eq. 8–15, Method 1 and Method 2 (scheme 2).
 - Pettigrew & Resat (2007), Multinomial tau-leaping method for stochastic kinetic simulations, J. Chem. Phys. 126, 084101.
 - Cao, Gillespie & Petzold (2006), Efficient step size selection for the tau-leaping simulation method, J. Chem. Phys. 124, 044109.
-- Notation: `CLAUDE.md` ("Model notation"), `README.md`, `docs/PLAN_fibroblastos.md`.
+- Notation: `docs/NOTATION.md`, `README.md`, `docs/PLAN_fibroblastos.md`.
 - Code read for this plan: `src/gillespie/` (`tumor_simulation.py`, `rate_matrix.py`, `clone.py`, `crowding_strategy.py`, `simulation_config.py`), `docs/ARCHITECTURE.md`, `docs/PLAN_fibroblastos.md`.

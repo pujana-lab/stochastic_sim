@@ -74,3 +74,27 @@ def test_dead_clone_reports_zero_rates():
     # The exhausted pool starts empty
     assert sim.tissue_state.clones[(-2,)].N == 0
     assert snap[(-2,)]["rb"] == snap[(-2,)]["rd"] == 0.0
+
+
+def test_one_root_clone_per_cell_type_keyed_by_default_id():
+    sim = _quiet_sim()
+    roots = {cid: c.get_type() for cid, c in sim.tissue_state.clones.items()}
+    assert roots == {cfg.default_id: t for t, cfg in sim.config.cell_parameters.items()}
+
+
+def test_seeded_trajectory_is_unchanged():
+    """Regression: a seeded run gives the trajectory recorded on 03-11-2026.
+
+    It depends on the RNG stream and on the event order in the rate matrix (the
+    order of cell_parameters; the mutated root starts alive so that its position
+    matters). If a change is meant to alter the dynamics, record the new values
+    here in the same commit.
+    """
+    config = SimulationConfig(seed=7, T_max=300, OMEGA=2000, cell_parameters={"mutated": {"N": 50}})
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        times, _, tissue_state, _ = TumorSimulation(config).run()
+    assert len(times) == 2583
+    final = {t: tissue_state.pop_map[t] for t in ("base", "mutated", "immune", "exhausted")}
+    assert final == {"base": 2480, "mutated": 190, "immune": 1901, "exhausted": 93}
+    mutant_clones = len(tissue_state.clones) - len(config.cell_parameters)  # minus one root per type
+    assert mutant_clones == 26

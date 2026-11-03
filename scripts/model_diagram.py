@@ -9,16 +9,17 @@ The diagram is *inferred*, not drawn by hand:
   becomes an edge, and every ``self.config.<param>`` read becomes its label
 * mutation target   -> ``CellTypeConfig.next_mutation``
 * conversion target -> ``CellTypeConfig.converts_to`` when that field exists,
-  otherwise the hard-coded ``clones[(<id>,)]`` in ``TumorSimulation._induce_exhaustion``
+  otherwise the ``cell_parameters["<type>"]`` read in ``TumorSimulation._induce_exhaustion``
 
 Edge semantics (by the method in which the read happens):
 
-    crowding_numerator      "Y = S + ..." in T's label (crowding g(Y, K_X)) (or S -.-o T with --crowding-edges)
+    crowding_numerator      "Y_T = N_T + N_S + ..." in T's label (crowding g(Y_T, K_T)) (or S -.-o T with --crowding-edges)
     birth_rate_effective    S ==> T    S raises T's birth (activation / support)
     death_rate_effective    S --x T    S kills T
     exhaustion_rate_effective /
     conversion_rate_effective
-                            S -.-> (T -> target)   S catalyses T's conversion
+                            S -.-> (T -> target)   S catalyses T's conversion; the label is the
+                                                   parameter that multiplies N_S
 
 Usage::
 
@@ -81,7 +82,10 @@ PARAM_SYMBOLS = {
 
 
 def _psym(params: list[str]) -> str:
-    return ", ".join(PARAM_SYMBOLS.get(p, p) for p in params)
+    """Symbols of ``params``, in the order of PARAM_SYMBOLS (unknown ones last)."""
+    order = list(PARAM_SYMBOLS)
+    ranked = sorted(params, key=lambda p: order.index(p) if p in order else len(order))
+    return ", ".join(PARAM_SYMBOLS.get(p, p) for p in ranked)
 
 RATE_METHODS = {
     "crowding_numerator": "crowding",
@@ -94,9 +98,9 @@ RATE_METHODS = {
 
 # ── code inspection ──────────────────────────────────────────────────────────
 
-def _pop_keys(node: ast.AST) -> set[str]:
-    """Type names read from any ``pop_map`` inside ``node``."""
-    keys: set[str] = set()
+def _pop_keys_in_order(node: ast.AST) -> list[str]:
+    """Type names read from any ``pop_map`` inside ``node``, in source order."""
+    found: list[tuple[int, int, str]] = []
     for sub in ast.walk(node):
         # pop_map.get("x", 0)
         if (
@@ -107,13 +111,18 @@ def _pop_keys(node: ast.AST) -> set[str]:
             and sub.args
             and isinstance(sub.args[0], ast.Constant)
         ):
-            keys.add(sub.args[0].value)
+            found.append((sub.lineno, sub.col_offset, sub.args[0].value))
         # pop_map["x"]
         if isinstance(sub, ast.Subscript) and _ends_with_pop_map(sub.value):
             sl = sub.slice
             if isinstance(sl, ast.Constant):
-                keys.add(sl.value)
-    return keys
+                found.append((sub.lineno, sub.col_offset, sl.value))
+    return list(dict.fromkeys(key for *_, key in sorted(found)))
+
+
+def _pop_keys(node: ast.AST) -> set[str]:
+    """Type names read from any ``pop_map`` inside ``node``."""
+    return set(_pop_keys_in_order(node))
 
 
 def _ends_with_pop_map(node: ast.AST) -> bool:
@@ -125,7 +134,7 @@ def _ends_with_pop_map(node: ast.AST) -> bool:
 
 
 def _config_params(node: ast.AST) -> list[str]:
-    """``self.config.<param>`` reads inside ``node`` (in source order, unique)."""
+    """``self.config.<param>`` reads inside ``node`` (unique)."""
     out: list[str] = []
     for sub in ast.walk(node):
         if (
@@ -190,6 +199,7 @@ def inspect_clone_types() -> dict[str, dict]:
                 if isinstance(fn, ast.FunctionDef) and fn.name in RATE_METHODS:
                     methods[fn.name] = {
                         "reads": _pop_keys(fn),
+                        "reads_in_order": _pop_keys_in_order(fn),
                         "params": _config_params(fn),
                         "by_src": _params_by_source(fn),
                         "zero": _returns_zero(fn),
@@ -201,13 +211,10 @@ def inspect_clone_types() -> dict[str, dict]:
 def _conversion_target(type_name: str, cfg: CellTypeConfig) -> str | None:
     if "converts_to" in {f.name for f in fields(CellTypeConfig)}:
         return getattr(cfg, "converts_to", "") or None
-    # legacy: TumorSimulation._induce_exhaustion hard-codes the target clone id
+    # legacy: TumorSimulation._induce_exhaustion names the target type
     src = inspect.getsource(sim_module.TumorSimulation._induce_exhaustion)
-    ids = re.findall(r"clones\[\((-?\d+),\)\]", src)
-    by_id = {c.default_id: t for t, c in _DEFAULT_CELL_PARAMETERS.items()}
-    for raw in ids:
-        tgt = by_id.get((int(raw),))
-        if tgt:
+    for tgt in re.findall(r"cell_parameters\[[\"'](\w+)[\"']\]", src):
+        if tgt in _DEFAULT_CELL_PARAMETERS:
             return tgt
     return None
 
@@ -216,11 +223,6 @@ def _conversion_target(type_name: str, cfg: CellTypeConfig) -> str | None:
 
 def _sym(t: str) -> str:
     return SYMBOLS.get(t, t)
-
-
-def _tname(t: str) -> str:
-    """Type name as in N_<type> (README notation)."""
-    return t
 
 
 def build_mermaid(crowding_edges: bool = False) -> str:
@@ -251,8 +253,8 @@ def build_mermaid(crowding_edges: bool = False) -> str:
         lines_lbl = [" · ".join(own)] if own else []
         crowd = m.get("crowding_numerator")
         if crowd and not birth_off:
-            num = " + ".join(_tname(k) for k in sorted(crowd["reads"])) or "0"
-            lines_lbl.append(f"Y = {num}")
+            num = " + ".join(f"N<sub>{k}</sub>" for k in crowd["reads_in_order"]) or "0"
+            lines_lbl.append(f"Y<sub>{t}</sub> = {num}")
         head = f"<b>{t}</b>" + (f" ({_sym(t)})" if t in SYMBOLS else "")
         label = head + "".join(f"<br/><small>{x}</small>" for x in lines_lbl)
         lines.append(f'    {t}("{label}")')
@@ -273,12 +275,16 @@ def build_mermaid(crowding_edges: bool = False) -> str:
                 node = f"conv_{t}"
                 lines.append(f"    {node}(( ))")
                 add(f"    {t} --- {node}", "flow")
-                arrow = '-->|"r<sub>E</sub> (ω)"|' if cfg.omega_exhaust > 0 else '-->|"r<sub>E</sub>"|' 
-                add(f"    {node} {arrow} {target}", "flow")
+                add(f'    {node} -->|"r<sub>E</sub>"| {target}', "flow")
                 styles.append(f"    class {node} tr")
                 for src in sorted((conv or {}).get("reads", ())):
-                    params = _psym(conv["by_src"].get(src, [])) or "ω"
-                    add(f'    {src} -.->|"{params}"| {node}', "cat")
+                    params = _psym(conv["by_src"].get(src, []))
+                    # The base method multiplies by the type's own omega_exhaust (ω),
+                    # which is a cell parameter, not a self.config read.
+                    if not params and cfg.omega_exhaust > 0:
+                        params = PARAM_SYMBOLS["omega_exhaust"]
+                    label = f'|"{params}"|' if params else ""
+                    add(f"    {src} -.->{label} {node}", "cat")
 
         # interactions on rates
         for meth, role in RATE_METHODS.items():

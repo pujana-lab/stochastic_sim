@@ -6,6 +6,8 @@ flow and boundaries.
 ## Working documentation
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — current architecture and update rules.
+- [`NOTATION.md`](./NOTATION.md) — model symbols (mean-field and Gillespie) and
+  how to name new parameters.
 - [`gillespie_full_diagnosis_roadmap.md`](./gillespie_full_diagnosis_roadmap.md) —
   historical diagnosis and modelling questions; it is not an implementation
   contract.

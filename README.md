@@ -111,7 +111,7 @@ After installation, use either the CLI or the Makefile targets depending on whet
 
 ## Model equations
 
-Symbols follow the "Model notation" section of [`CLAUDE.md`](CLAUDE.md).
+Symbols follow [`docs/NOTATION.md`](docs/NOTATION.md).
 
 ### Event types
 

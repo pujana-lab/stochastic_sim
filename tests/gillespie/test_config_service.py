@@ -71,3 +71,11 @@ class TestMergeAndBuild:
     def test_legacy_cell_types_are_rejected(self):
         with pytest.raises(ValueError, match="cell_parameters"):
             merge_and_build(json_data={"cell_types": {"base": {"N": 10}}})
+
+    def test_new_cell_type_without_default_id_is_rejected(self):
+        with pytest.raises(ValueError, match="default_id"):
+            merge_and_build(json_data={"cell_parameters": {"new_type": {"N": 10}}})
+
+    def test_duplicate_default_id_is_rejected(self):
+        with pytest.raises(ValueError, match="default_id"):
+            merge_and_build(json_data={"cell_parameters": {"immune": {"default_id": (-2,)}}})

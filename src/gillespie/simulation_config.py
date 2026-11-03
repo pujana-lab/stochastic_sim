@@ -19,6 +19,11 @@ class CellTypeConfig:
     fitness_gain: float = 0.0
     next_mutation: str = ""
 
+# default_id is the id of the root clone of each type: one per type, outside the
+# mutation lineage (mutants get parent.clone_id + (k,)). Every other module reads
+# the ids from here. The order of this dict is the order of the root clones in
+# TumorSimulation, and therefore of the events in the rate matrix: changing it
+# changes seeded trajectories.
 _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
     "base": CellTypeConfig(
         default_id= (),
@@ -27,6 +32,12 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         nu=0.00002,
         next_mutation= "mutated"
     ),
+    "mutated": CellTypeConfig(
+        default_id= (-3,),
+        fitness_gain= 0.2,
+        N=0,
+        K=2,
+    ),
     "immune": CellTypeConfig(
         default_id= (-1,),
         N=2000,
@@ -34,12 +45,6 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         lambda0= 0.005,
         omega_exhaust=0.003,
         mu= 0.0,
-    ),
-    "mutated": CellTypeConfig(
-        default_id= (-3,),
-        fitness_gain= 0.2, 
-        N=0,
-        K=2,
     ),
     "exhausted": CellTypeConfig(
         default_id=(-2,),
@@ -117,6 +122,13 @@ class SimulationConfig:
             else:
                 raise TypeError(...)
             normalized[cell_type] = cfg
+
+        ids = [cfg.default_id for cfg in normalized.values()]
+        if None in ids or len(set(ids)) != len(ids):
+            raise ValueError(
+                "Every cell type needs its own default_id (root clone id): "
+                f"{ {t: cfg.default_id for t, cfg in normalized.items()} }"
+            )
 
         object.__setattr__(self, "cell_parameters", normalized)
     

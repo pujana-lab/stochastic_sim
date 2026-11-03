@@ -8,20 +8,22 @@ import pandas as pd
 from src.gillespie.cloneId import CloneId
 from src.gillespie.clone import Clone
 from src.gillespie.event import Event
+from src.gillespie.simulation_config import _DEFAULT_CELL_PARAMETERS
+
+# Root clone of each type (its default_id) -> name in the output files. Other types
+# use their type name; base and mutated keep the names that existing readers expect
+# (scripts/clone_recount_report.py, notebooks/visualization).
+_LEGACY_ROOT_NAMES = {"base": "root", "mutated": "mutated_root"}
+_ROOT_NAMES: Dict[CloneId, str] = {
+    cfg.default_id: _LEGACY_ROOT_NAMES.get(cell_type, cell_type)
+    for cell_type, cfg in _DEFAULT_CELL_PARAMETERS.items()
+}
 
 #TODO: HAY QUE REHACER ESTO PARA QUE HAGA MAS USO DE TISSUE STATE Y SU FUNCION SNAPSHOT. Ver que info queremos sacar al csv
 def clone_id_to_str(clone_id: CloneId) -> str:
-    if len(clone_id) == 0:
-        return "root"   
-    elif clone_id == (-3,):
-        return "mutated_root"
-    elif clone_id == (-1,):
-        return "immune"
-    elif clone_id == (-2,):
-        return "exhausted"
-
-    else:
-        return ".".join(map(str, clone_id))
+    if clone_id in _ROOT_NAMES:
+        return _ROOT_NAMES[clone_id]
+    return ".".join(map(str, clone_id))
     
 def _normalize_parquet_path(path: Path) -> Path:
     if path.suffix.lower() == ".parquet":
