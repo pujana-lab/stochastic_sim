@@ -1,0 +1,296 @@
+diff --git a/src/gillespie/clone.py b/src/gillespie/clone.py
+index b5c2c9f..f4a7e01 100644
+--- a/src/gillespie/clone.py
++++ b/src/gillespie/clone.py
+@@ -41,6 +41,7 @@ class Clone:
+         self.K_min: int = config.Kmin
+ 
+         self.next_mutation: str = self.cell_parameters.next_mutation
++        self.converts_to: str = self.cell_parameters.converts_to
+         self.instability: float = 0.0
+         self.buildup: float = 0.0
+         self.d1: float = 0.0
+@@ -105,6 +106,11 @@ class MutatedClone(Clone, clone_type = "mutated"):
+     def crowding_numerator(self, tissue_state: "TissueState") -> int:
+         return tissue_state.pop_map.get("mutated", 0)
+ 
++    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
++        """r_B(mutated) = λ_mutated · N_mutated · C(t) · (1 + α_F · N_caf)   (α_F already / OMEGA)"""
++        base_birth = super().birth_rate_effective(tissue_state)
++        n_caf = tissue_state.pop_map.get("caf", 0)
++        return base_birth * (1.0 + self.config.alpha_F * n_caf)
+     
+     def death_rate_effective(self, tissue_state: "TissueState") -> float:
+         """Death rate increases due to immune cell killing.
+@@ -145,7 +151,9 @@ class ImmuneClone(Clone, clone_type = "immune"):
+         """Exhaustion: exhaustion_rate * N_immune * N_cancer"""
+         base_exhaustion =  super().exhaustion_rate_effective(tissue_state= tissue_state)
+         n_cancer = tissue_state.pop_map.get("mutated",0)
+-        return base_exhaustion * n_cancer
++        n_caf = tissue_state.pop_map.get("caf", 0)
++        caf_exhaustion = self.N * n_caf * self.config.omega_F
++        return base_exhaustion * n_cancer + caf_exhaustion
+ 
+ 
+ class ExhaustedClone(Clone, clone_type = "exhausted"):
+@@ -160,5 +168,29 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
+         return 0.0
+ 
+ 
+-        
++class FibroblastClone(Clone, clone_type = "fibroblast"):
++    """F_N: logistic growth, N_crowd = N_fibroblast + N_caf + N_mutated; activated by mutated."""
+ 
++    def crowding_numerator(self, tissue_state: "TissueState") -> int:
++        pop_map = tissue_state.pop_map
++        return pop_map.get("fibroblast", 0) + pop_map.get("caf", 0) + pop_map.get("mutated", 0)
++
++    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
++        """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
++        r_E(fibroblast) = κ · N_fibroblast · N_mutated / (C_½ + N_mutated)   (C_½ already x OMEGA)
++        """
++        n_cancer = tissue_state.pop_map.get("mutated", 0)
++        denom = self.config.C_half + n_cancer
++        if denom <= 0:
++            return 0.0
++        return self.config.kappa * self.N * n_cancer / denom
++
++
++class CAFClone(Clone, clone_type = "caf"):
++    """F_T: does not divide, r_B(caf) = 0; r_D(caf) = μ_F · N_caf."""
++
++    def crowding_numerator(self, tissue_state: "TissueState") -> int:
++        return 0
++
++    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
++        return 0.0
+diff --git a/src/gillespie/clone_factory.py b/src/gillespie/clone_factory.py
+index 8d5ab52..4dc79d0 100644
+--- a/src/gillespie/clone_factory.py
++++ b/src/gillespie/clone_factory.py
+@@ -1,7 +1,7 @@
+ from typing import Optional
+ 
+ from src.gillespie.simulation_config import SimulationConfig
+-from src.gillespie.clone import Clone, WildTypeClone, MutatedClone, ImmuneClone, ExhaustedClone
++from src.gillespie.clone import Clone
+ from src.gillespie.cloneId import CloneId
+ 
+ 
+diff --git a/src/gillespie/infrastructure/csv_output.py b/src/gillespie/infrastructure/csv_output.py
+index 6c74f13..6412ece 100644
+--- a/src/gillespie/infrastructure/csv_output.py
++++ b/src/gillespie/infrastructure/csv_output.py
+@@ -19,6 +19,10 @@ def clone_id_to_str(clone_id: CloneId) -> str:
+         return "immune"
+     elif clone_id == (-2,):
+         return "exhausted"
++    elif clone_id == (-4,):
++        return "fibroblast"
++    elif clone_id == (-5,):
++        return "caf"
+ 
+     else:
+         return ".".join(map(str, clone_id))
+diff --git a/src/gillespie/simulation_config.py b/src/gillespie/simulation_config.py
+index 082833c..d9b7cfb 100644
+--- a/src/gillespie/simulation_config.py
++++ b/src/gillespie/simulation_config.py
+@@ -18,6 +18,7 @@ class CellTypeConfig:
+     omega_exhaust: float = 0.0
+     fitness_gain: float = 0.0
+     next_mutation: str = ""
++    converts_to: str = ""   # target type of the CONVERSION/EXHAUSTION event ("" = none)
+ 
+ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
+     "base": CellTypeConfig(
+@@ -34,6 +35,7 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
+         lambda0= 0.005,
+         omega_exhaust=0.003,
+         mu= 0.0,
++        converts_to="exhausted",
+     ),
+     "mutated": CellTypeConfig(
+         default_id= (-3,),
+@@ -46,6 +48,21 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
+         N=0,
+         lambda0= 0.0
+     ),
++    # Fibroblasts are OFF by default (N=0): the 4-type model is reproduced exactly.
++    "fibroblast": CellTypeConfig(       # F_N, naive / normal fibroblasts
++        default_id=(-4,),
++        N=0,
++        K=1,                            # K_F (fraction of OMEGA)
++        lambda0=0.005,                  # λ_F
++        mu=0.0,
++        converts_to="caf",              # activation F_N -> F_T (rate in FibroblastClone)
++    ),
++    "caf": CellTypeConfig(              # F_T, cancer-associated / activated fibroblasts
++        default_id=(-5,),
++        N=0,
++        lambda0=0.0,                    # no proliferation
++        mu=0.002,                       # μ_F
++    ),
+ }
+ 
+ @dataclass(frozen=True)
+@@ -69,6 +86,12 @@ class SimulationConfig:
+     # interaction parameters
+     theta_I: float = 0.0005  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
+     beta: float = 0.0004   # Activation rate: mutated cells activating immune cells (N_immune * N_mutant * beta)
++
++    # fibroblast interaction parameters (all 0 -> fibroblast module inert)
++    kappa: float = 0.0     # κ: max activation rate F_N -> F_T by mutated cells (Michaelis-Menten, NOT scaled)
++    C_half: float = 0.1    # C_½: N_mutated giving half-maximal activation (fraction of OMEGA, x OMEGA)
++    omega_F: float = 0.0   # ω_F: exhaustion immune -> exhausted driven by caf (N_immune * N_caf * omega_F)
++    alpha_F: float = 0.0   # α_F: caf support of mutated birth, factor (1 + alpha_F * N_caf)
+    
+ 
+     # instability / mutation parameters
+@@ -128,6 +151,9 @@ class SimulationConfig:
+         """Scale beta and theta_I by OMEGA for population-level dynamics."""
+         object.__setattr__(self, 'beta', self.beta / self.OMEGA)
+         object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
++        object.__setattr__(self, 'omega_F', self.omega_F / self.OMEGA)
++        object.__setattr__(self, 'alpha_F', self.alpha_F / self.OMEGA)
++        object.__setattr__(self, 'C_half', self.C_half * self.OMEGA)
+     
+     def _scale_cell_parameters(self) -> None:
+         """Scale parameters for each cell type.
+@@ -169,6 +195,7 @@ class SimulationConfig:
+             omega_exhaust=scaled_omega_exhaust,
+             fitness_gain=config.fitness_gain,
+             next_mutation=config.next_mutation,
++            converts_to=config.converts_to,
+         )
+     
+     def _scale_K(self, K: float | int) -> int:
+diff --git a/src/gillespie/tumor_simulation.py b/src/gillespie/tumor_simulation.py
+index e011bef..047f661 100644
+--- a/src/gillespie/tumor_simulation.py
++++ b/src/gillespie/tumor_simulation.py
+@@ -32,12 +32,13 @@ class TumorSimulation:
+         # Initialize clones
+         # clones_dict:Dict[CloneType,Clone]= {}
+         # TENGO QUE MOVER EL TIPO DE CLON DE LA FACTORY A LA CLASE CLONE
+-        clones_dict: Dict[CloneId, Clone] = {
+-            (): self.clone_factory.create_clone(clone_type="base"),
+-            (-3,): self.clone_factory.create_clone(clone_type="mutated"),
+-            (-1,): self.clone_factory.create_clone(clone_type="immune"),
+-            (-2,): self.clone_factory.create_clone(clone_type="exhausted")
+-        }
++        # Legacy order first (keeps seeded trajectories identical), then any new type.
++        legacy = ["base", "mutated", "immune", "exhausted"]
++        types = legacy + [t for t in self.config.cell_parameters if t not in legacy]
++        clones_dict: Dict[CloneId, Clone] = {}
++        for clone_type in types:
++            clone = self.clone_factory.create_clone(clone_type=clone_type)
++            clones_dict[clone.clone_id] = clone
+         
+         self.times: List[float] = [0.0]
+         # Encapsulate tissue state
+@@ -151,8 +152,11 @@ class TumorSimulation:
+         clone.kill()
+     
+     def _induce_exhaustion(self, clone: Clone) -> None:
+-        self.tissue_state.clones[clone.clone_id].kill()
+-        self.tissue_state.clones[(-2,)].divide()
++        """Generic conversion: one cell of `clone` becomes one cell of `clone.converts_to`."""
++        assert clone.converts_to, f"{clone.get_type()} has no conversion target"
++        target_id = self.config.cell_parameters[clone.converts_to].default_id
++        clone.kill()
++        self.tissue_state.clones[target_id].divide()
+     
+     def _apply_event(self, event: Event) -> None:
+         clone = self.tissue_state.clones[event.clone_id]
+diff --git a/tests/gillespie/test_config_service.py b/tests/gillespie/test_config_service.py
+index 92f5c8f..5af758d 100644
+--- a/tests/gillespie/test_config_service.py
++++ b/tests/gillespie/test_config_service.py
+@@ -38,7 +38,7 @@ class TestMergeAndBuild:
+         assert config.cell_parameters["immune"] == SimulationConfig(
+             scale=False
+         ).cell_parameters["immune"]
+-        assert set(config.cell_parameters) == {"base", "immune", "mutated", "exhausted"}
++        assert set(config.cell_parameters) == {"base", "immune", "mutated", "exhausted", "fibroblast", "caf"}
+ 
+     def test_cli_overrides_json(self):
+         config = merge_and_build(
+diff --git a/tests/gillespie/test_fibroblasts.py b/tests/gillespie/test_fibroblasts.py
+new file mode 100644
+index 0000000..76f2950
+--- /dev/null
++++ b/tests/gillespie/test_fibroblasts.py
+@@ -0,0 +1,72 @@
++import contextlib
++import io
++
++import pytest
++
++from src.gillespie.simulation_config import SimulationConfig
++from src.gillespie.tumor_simulation import TumorSimulation
++
++
++def _sim(cell_parameters=None, **kw):
++    cp = {"base": {"N": 200}, "mutated": {"N": 20}, "immune": {"N": 50}, "exhausted": {"N": 0},
++          "fibroblast": {"N": 80, "K": 0.5, "lambda0": 0.01}, "caf": {"N": 10, "mu": 0.003}}
++    cp.update(cell_parameters or {})
++    cfg = SimulationConfig(seed=1, T_max=50, save_all_steps=False, OMEGA=200, cell_parameters=cp, **kw)
++    with contextlib.redirect_stdout(io.StringIO()):
++        return TumorSimulation(cfg)
++
++
++def _rate(sim, kind, clone_type):
++    return sum(e.rate for e in sim._build_rate_matrix().events
++               if e.kind.name == kind and e.clone_type == clone_type)
++
++
++def test_fibroblast_off_by_default_keeps_4_type_model():
++    cfg = SimulationConfig()
++    assert cfg.cell_parameters["fibroblast"].N == 0 and cfg.cell_parameters["caf"].N == 0
++    assert cfg.kappa == cfg.omega_F == cfg.alpha_F == 0.0
++
++
++def test_fibroblast_logistic_birth_counts_fn_ft_and_c():
++    sim = _sim()
++    cfg, pop = sim.config, sim.tissue_state.pop_map
++    p = cfg.cell_parameters["fibroblast"]
++    K = sim.tissue_state.clones[p.default_id].actual_K
++    expected = p.lambda0 * pop["fibroblast"] * max(0.0, 1 - (pop["fibroblast"] + pop["caf"] + pop["mutated"]) / K)
++    assert _rate(sim, "BIRTH", "fibroblast") == pytest.approx(expected)
++
++
++def test_activation_is_michaelis_menten_in_cancer():
++    sim = _sim(kappa=0.05, C_half=0.1)
++    cfg, pop = sim.config, sim.tissue_state.pop_map
++    assert cfg.C_half == pytest.approx(0.1 * cfg.OMEGA)
++    expected = cfg.kappa * pop["fibroblast"] * pop["mutated"] / (cfg.C_half + pop["mutated"])
++    assert _rate(sim, "EXHAUSTION", "fibroblast") == pytest.approx(expected)
++
++
++def test_activation_event_moves_one_fn_to_ft():
++    sim = _sim(kappa=0.05)
++    fn, ft = sim.tissue_state.clones[(-4,)], sim.tissue_state.clones[(-5,)]
++    n_fn, n_ft = fn.N, ft.N
++    sim._induce_exhaustion(fn)
++    assert (fn.N, ft.N) == (n_fn - 1, n_ft + 1)
++
++
++def test_caf_does_not_divide_and_dies_at_d_F():
++    sim = _sim()
++    assert _rate(sim, "BIRTH", "caf") == 0.0
++    assert _rate(sim, "DEATH", "caf") == pytest.approx(0.003 * sim.tissue_state.pop_map["caf"])
++
++
++def test_caf_induced_exhaustion_adds_to_cancer_induced():
++    sim0, sim1 = _sim(), _sim(omega_F=0.002)
++    pop = sim1.tissue_state.pop_map
++    extra = sim1.config.omega_F * pop["immune"] * pop["caf"]
++    assert _rate(sim1, "EXHAUSTION", "immune") == pytest.approx(_rate(sim0, "EXHAUSTION", "immune") + extra)
++
++
++def test_caf_boosts_cancer_birth():
++    sim0, sim1 = _sim(), _sim(alpha_F=1.0)
++    pop = sim1.tissue_state.pop_map
++    factor = 1 + sim1.config.alpha_F * pop["caf"]
++    assert _rate(sim1, "BIRTH", "mutated") == pytest.approx(_rate(sim0, "BIRTH", "mutated") * factor)

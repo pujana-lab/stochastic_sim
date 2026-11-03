@@ -111,6 +111,8 @@ After installation, use either the CLI or the Makefile targets depending on whet
 
 ## Model equations
 
+Symbols follow the "Model notation" section of [`CLAUDE.md`](CLAUDE.md).
+
 ### Event types
 
 Each alive clone can participate in the following events:
@@ -125,7 +127,7 @@ Each alive clone can participate in the following events:
 For a clone with population `N`, the base effective rates are:
 
 - birth rate:
-  `r_B = λ · N · C(t)`
+  `r_B = λ · N · g(Y_X, K_X)`
 - death rate:
   `r_D = μ · N`
 - mutation rate:
@@ -133,28 +135,31 @@ For a clone with population `N`, the base effective rates are:
 - exhaustion rate:
   `r_E = ω · N`
 
-The crowding factor `C(t)` is computed by `CrowdingStrategy`. If `use_logistic` is disabled, `C(t) = 1`.
+The crowding factor `g(Y_X, K_X)` of clone type X is computed by `CrowdingStrategy`. If `use_logistic` is disabled, `g = 1`.
 
 ### Crowding
 
 Crowding is implemented as:
 
 ```
-C(t) = max(0, 1 - N_crowd / K_t)
+g(Y_X, K_X) = max(0, 1 - Y_X / K_X)
 ```
 
 where:
 
-- `N_crowd` is the competitive population for that clone type
-- `K_t` is the effective carrying capacity
+- `Y_X` is the competing population of clone type X: the sum returned by `crowding_numerator()`
+  (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`)
+- `K_X` is the carrying capacity of type X. In the Gillespie it is the scaled value
+  (`actual_K`: `K · OMEGA`, adapted as below); in the mean-field equations it is unscaled
+  (`K_C`, `K_I`)
 
 The available strategies are:
 
 - `SimpleCrowding`
-  - computes `K_t = max(K_min, K)`
+  - computes `K_X = max(K_min, K)`
 - `AdaptedCrowding`
-  - if `λ > μ`: `K_t = max(K_min, ceil(K / (1 - μ / λ)))`
-  - otherwise: `K_t = ∞`
+  - if `λ > μ`: `K_X = max(K_min, ceil(K / (1 - μ / λ)))`
+  - otherwise: `K_X = ∞`
 
 `AdaptedCrowding` is selected when `use_logistic_adapted=True`.
 
@@ -175,7 +180,7 @@ r_D(mutated) = μ_mutated · N_mutated + θ_I · N_mutated · N_immune
 Immune birth includes activation by mutated cells:
 
 ```
-r_B(immune) = λ_immune · N_immune · C(t) + β · N_immune · N_mutated
+r_B(immune) = λ_immune · N_immune · g(Y_immune, K_immune) + β · N_immune · N_mutated
 ```
 
 Immune exhaustion scales with tumor burden:

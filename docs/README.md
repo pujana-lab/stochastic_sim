@@ -10,6 +10,14 @@ flow and boundaries.
   historical diagnosis and modelling questions; it is not an implementation
   contract.
 
+## Plans (proposals, not implemented)
+
+- [`PLAN_tau_leaping.md`](./PLAN_tau_leaping.md) — multinomial tau-leaping:
+  derivation, step-size control, and the implementation plan on the current
+  architecture.
+- [`PLAN_fibroblastos.md`](./PLAN_fibroblastos.md) — fibroblast module
+  (F_N, F_T), with its prototype in `fibroblastos_prototype.patch`.
+
 ## Research and historical material
 
 The proposal, graphical abstracts, poster work, notebooks, and root-level
