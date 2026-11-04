@@ -11,6 +11,7 @@ from src.gillespie.infrastructure.csv_output import (
     save_rates_history_parquet,
 )
 from src.gillespie.infrastructure.display.summary_printer import print_summary
+from src.gillespie.infrastructure.run_config_output import save_run_config
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
 
@@ -26,6 +27,8 @@ def main() -> None:
     cli_overrides = get_explicit_cli_args(args, parser)
     base.update(cli_overrides)
     config = SimulationConfig(**base)
+    run_config_txt, run_config_json = save_run_config(Path("./run_config"), config)
+    print(f"Saved run conditions (input and used values) to {run_config_txt} and {run_config_json}")
 
     sim = TumorSimulation(config=config)
     input("press any key to continue")

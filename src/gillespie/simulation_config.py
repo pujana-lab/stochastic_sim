@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, replace
 from typing import Optional, TYPE_CHECKING
 from src.gillespie.cloneId import CloneId
 import numpy as np
@@ -127,9 +127,13 @@ class SimulationConfig:
     
     # Crowding strategy (será inicializado en __post_init__)
     crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)
+    # Values as given (defaults + JSON + CLI), before OMEGA scaling; see as_dict()
+    input_values: dict = field(init=False, default=None, repr=False, compare=False)
+
     def __post_init__(self):
         """Initialize configuration: normalize cell params, scale parameters, and set up strategies."""
         self._normalize_cell_parameters()
+        object.__setattr__(self, "input_values", self.as_dict())
         self._initialize_crowding_strategy()
         if self.scale:
             self._check_not_scaled()
@@ -169,6 +173,17 @@ class SimulationConfig:
             )
 
         object.__setattr__(self, "cell_parameters", normalized)
+
+    def as_dict(self) -> dict:
+        """Current parameter values as plain data (the "used" values once scaled)."""
+        values = {f.name: getattr(self, f.name) for f in fields(self)
+                  if f.init and f.name != "cell_parameters"}
+        values["cell_parameters"] = {
+            cell_type: {f.name: getattr(cfg, f.name) for f in fields(cfg) if f.name != "scaled"}
+            | {"crowding_pool": dict(cfg.crowding_pool)}
+            for cell_type, cfg in self.cell_parameters.items()
+        }
+        return values
 
     def _check_not_scaled(self) -> None:
         """Refuse to scale values that are already scaled.

@@ -9,6 +9,8 @@ __pycache__/
 *.csv
 *.png
 *.parquet
+run_config.json
+results/**/config.json
 *.txt
 *.svg
 results/multi_seed_runs

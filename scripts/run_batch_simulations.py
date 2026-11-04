@@ -11,24 +11,7 @@ from src.gillespie.infrastructure.csv_output import (
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
 from src.gillespie.infrastructure.config.json_config import load_config_json
-
-
-def save_config_text(config: SimulationConfig, path: Path) -> None:
-    """Persist a human-readable textual snapshot of the config for a run."""
-    lines: list[str] = ["SimulationConfig"]
-    for field_name in config.__dataclass_fields__:
-        if field_name == "crowding_strategy":
-            continue
-        value = getattr(config, field_name)
-        if field_name == "cell_parameters":
-            lines.append("cell_parameters:")
-            for cell_type, cell_cfg in value.items():
-                lines.append(f"  {cell_type}: {cell_cfg}")
-        else:
-            lines.append(f"{field_name}={value!r}")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+from src.gillespie.infrastructure.run_config_output import save_run_config
 
 
 def build_base_params(config_path: Path | None) -> dict:
@@ -60,7 +43,7 @@ def run_single_simulation(seed: int, base_params: dict, output_dir: Path, save_c
     run_dir.mkdir(parents=True, exist_ok=True)
 
     if save_config:
-        save_config_text(config, run_dir / "config.txt")
+        save_run_config(run_dir / "config", config)   # config.txt (table) + config.json (reproducible)
 
     save_history_parquet(run_dir / "history.parquet", times, history)
     save_clones_parquet(run_dir / "clones.parquet", tissue_state.clones)
@@ -101,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--save-config",
         action="store_true",
         default=True,
-        help="Save a text snapshot of each run's SimulationConfig to config.txt inside the seed directory.",
+        help="Save each run's conditions (input and used values) to config.txt and config.json inside the seed directory.",
     )
    
     parser.add_argument(

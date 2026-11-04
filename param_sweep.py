@@ -13,6 +13,7 @@ from src.gillespie.infrastructure.csv_output import (
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.tumor_simulation import TumorSimulation
 from src.gillespie.infrastructure.config.json_config import load_config_json
+from src.gillespie.infrastructure.run_config_output import save_run_config
 
 
 # 5 Combinaciones distintas de (gamma, omega)
@@ -44,24 +45,6 @@ def build_config_for_combination(
         params["cell_parameters"]["immune"]["omega_exhaust"] = omega
         params["cell_parameters"]["immune"]["N"] = N_immune  # Valor por defecto si no se especifica
     return SimulationConfig(**params)
-
-
-def save_config_snapshot(config: SimulationConfig, path: Path) -> None:
-    """Guarda un resumen de texto claro de la configuración utilizada."""
-    lines: list[str] = ["SimulationConfig Snapshot"]
-    for field_name in config.__dataclass_fields__:
-        if field_name == "crowding_strategy":
-            continue
-        value = getattr(config, field_name)
-        if field_name == "cell_parameters":
-            lines.append("cell_parameters:")
-            for cell_type, cell_cfg in value.items():
-                lines.append(f"  {cell_type}: {cell_cfg}")
-        else:
-            lines.append(f"{field_name}={value!r}")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def load_base_params(config_path: Path | None) -> dict:
@@ -124,7 +107,7 @@ def main() -> None:
         run_dir = args.output_dir / name
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        save_config_snapshot(config, run_dir / "config.txt")
+        save_run_config(run_dir / "config", config)   # config.txt (table) + config.json (reproducible)
         save_history_parquet(run_dir / "history.parquet", times, history)
         save_clones_parquet(run_dir / "clones.parquet", tissue_state.clones)
         save_rates_history_parquet(run_dir / "rates_history.parquet", rates_history)

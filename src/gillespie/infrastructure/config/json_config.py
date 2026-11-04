@@ -17,4 +17,9 @@ def load_config_json(path: Path) -> dict:
     # Calculator provenance is useful in the file but is not a
     # SimulationConfig field.
     config.pop("_calculator", None)
+
+    # JSON has no tuples: clone ids (default_id) come back as lists.
+    for params in config.get("cell_parameters", {}).values():
+        if isinstance(params, dict) and isinstance(params.get("default_id"), list):
+            params["default_id"] = tuple(params["default_id"])
     return config
