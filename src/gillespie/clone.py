@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING, Dict, Type
+from typing import Optional, TYPE_CHECKING, Dict, Tuple, Type
 
 from src.gillespie.cloneId import CloneId
 from src.gillespie.event_type import EventType
@@ -17,6 +17,11 @@ class Clone:
 
     _registry: Dict[str, Type["Clone"]] = {}
     _type_name: str = None
+
+    # Type totals this type's rate methods read from pop_map outside its crowding pool
+    # (interactions). The tau leaper watches them; tests/gillespie/test_hazard_inputs.py
+    # checks the list against the rates.
+    hazard_inputs: Tuple[str, ...] = ()
 
     def __init_subclass__(cls, clone_type: str = None, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -124,6 +129,8 @@ class WildTypeClone(Clone, clone_type = "base"):
         super().__init__(*args, **kwargs)
 
 class MutatedClone(Clone, clone_type = "mutated"):
+    hazard_inputs = ("immune", "caf")          # θ_I · N_immune in r_D, α_F · N_caf in r_B
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -147,6 +154,8 @@ class MutatedClone(Clone, clone_type = "mutated"):
     
 
 class ImmuneClone(Clone, clone_type = "immune"):
+    hazard_inputs = ("mutated", "caf")         # β · N_mutated in r_B, ω · N_mutated + ω_F · N_caf in r_E
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
@@ -183,6 +192,8 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
 
 class FibroblastClone(Clone, clone_type = "fibroblast"):
     """F_N: logistic growth with Y_fibroblast = N_fibroblast + N_caf + N_mutated; activated by mutated."""
+
+    hazard_inputs = ("mutated",)               # κ · N_mutated / (C_½ + N_mutated) in r_E
 
     def conversion_rate_effective(self, tissue_state: "TissueState") -> float:
         """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
