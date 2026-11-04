@@ -106,11 +106,17 @@ class Clone:
         delta[target] = delta.get(target, 0) + gain   # adds up if target == t
         return {k: v for k, v in delta.items() if v != 0}
 
-    def divide(self) -> None:
-        self.N += 1
+    def divide(self, k: int = 1) -> None:
+        """Add k cells (k births, or k cells arriving by conversion)."""
+        if k < 0:
+            raise ValueError(f"k must be >= 0, got {k}")
+        self.N += k
 
-    def kill(self) -> None:
-        self.N = max(0, self.N - 1)
+    def kill(self, k: int = 1) -> None:
+        """Remove k cells, clamped at N = 0. Callers that must not lose cells check k <= N."""
+        if k < 0:
+            raise ValueError(f"k must be >= 0, got {k}")
+        self.N = max(0, self.N - k)
 
     def next_child_id(self) -> CloneId:
         self.children_count += 1
