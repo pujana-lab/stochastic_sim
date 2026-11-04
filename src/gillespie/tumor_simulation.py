@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
 from src.gillespie.cloneId import CloneId
-from src.gillespie.clone import Clone
+from src.gillespie.clone import Clone, MUTANT_SEED_SIZE
 from src.gillespie.tissue_state import TissueState
 from src.gillespie.event import Event
 from src.gillespie.event_type import EventType
@@ -144,7 +144,7 @@ class TumorSimulation:
         self.create_clone(
             clone_id=clone.next_child_id(),
             clone_type=clone.next_mutation,
-            N=2,
+            N=MUTANT_SEED_SIZE,
             parent=clone.clone_id,
         )
         clone.kill()

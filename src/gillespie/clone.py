@@ -2,11 +2,15 @@ from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING, Dict, Type
 
 from src.gillespie.cloneId import CloneId
+from src.gillespie.event_type import EventType
 from src.gillespie.simulation_config import SimulationConfig
 
 if TYPE_CHECKING:
     from src.gillespie.tissue_state import TissueState
 
+# Cells in a new mutant clone: a MUTATION removes 1 parent cell and adds a clone of
+# this size. Shared by TumorSimulation._introduce_mutation and Clone.type_delta.
+MUTANT_SEED_SIZE: int = 2
 
 
 class Clone:
@@ -73,6 +77,28 @@ class Clone:
     def exhaustion_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.exhaustion_rate * self.N
         
+    def type_delta(self, kind: EventType) -> Dict[str, int]:
+        """Change of the type totals N_T caused by one event of this clone (mirrors _apply_event)."""
+        t = self.get_type()
+        if kind == EventType.BIRTH:
+            return {t: 1}
+        elif kind == EventType.DEATH:
+            return {t: -1}
+        elif kind == EventType.MUTATION:
+            if not self.next_mutation:
+                raise ValueError(f"{t} has no mutation target (next_mutation)")
+            target, gain = self.next_mutation, MUTANT_SEED_SIZE
+        elif kind == EventType.EXHAUSTION:
+            if not self.converts_to:
+                raise ValueError(f"{t} has no conversion target (converts_to)")
+            target, gain = self.converts_to, 1
+        else:
+            raise ValueError(f"Unknown event kind: {kind}")
+
+        delta = {t: -1}
+        delta[target] = delta.get(target, 0) + gain   # adds up if target == t
+        return {k: v for k, v in delta.items() if v != 0}
+
     def divide(self) -> None:
         self.N += 1
 
