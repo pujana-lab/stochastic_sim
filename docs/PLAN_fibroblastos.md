@@ -44,7 +44,7 @@ No basta con «una subclase nueva en `clone.py`». Hacen falta:
 | `fibroblast` | **F_N** | `N_fibroblast` | f_N |
 | `caf` | **F_T** | `N_caf` | f_T |
 
-En campo medio el crowding se escribe explícito, como factor logístico: `(1 − C/K_C)`, `(1 − (I + E)/K_I)`, `(1 − (F_N + F_T + C)/K_F)`, con las capacidades sin escalar. En Gillespie se escribe `g(Y, K_X) = 1 − Y/K_X`: `Y` es la población que compite con el tipo X (la suma que devuelve `crowding_numerator()`) y `K_X` es la capacidad escalada (`actual_K`: × `OMEGA` e inflada por `AdaptedCrowding`). El código la limita a `max(0, g)`. No se usa el `C(t)` antiguo del README. La población tumoral se escribe C en campo medio y `N_mutated` en Gillespie.
+En campo medio el crowding se escribe explícito, como factor logístico: `(1 − C/K_C)`, `(1 − (I + E)/K_I)`, `(1 − (w_N F_N + w_T F_T + w_C C)/K_F)`, con las capacidades sin escalar. En Gillespie se escribe `g(Y, K_X) = 1 − Y/K_X`: `Y` es la población que compite con el tipo X (la suma que devuelve `crowding_numerator()`) y `K_X` es la capacidad escalada (`actual_K`: × `OMEGA` e inflada por `AdaptedCrowding`). El código la limita a `max(0, g)`. No se usa el `C(t)` antiguo del README. La población tumoral se escribe C en campo medio y `N_mutated` en Gillespie.
 
 ### 1.2 Parámetros
 
@@ -79,7 +79,7 @@ Opcion A:
 \frac{dC}{dt}   &= \lambda_C\, C \left(1 - \frac{C}{K_C}\right) \boxed{(1 + \alpha_F F_T)} - \mu_C C - \theta\, C I \\
 \frac{dI}{dt}   &= \lambda_I\, I \left(1 - \frac{I + E}{K_I}\right) + \beta\, C I - \omega\, C I {- \omega_F\, F_T I} \\
 \frac{dE}{dt}   &= \omega\, C I {+ \omega_F\, F_T I} - \mu_E E \\
-\frac{dF_N}{dt} &= \lambda_F\, F_N \left(1 - \frac{F_N + F_T + C}{K_F}\right) - \kappa\, F_N \frac{C}{C_{1/2} + C} \\
+\frac{dF_N}{dt} &= \lambda_F\, F_N \left(1 - \frac{w_N F_N + w_T F_T + w_C C}{K_F}\right) - \kappa\, F_N \frac{C}{C_{1/2} + C} \\
 \frac{dF_T}{dt} &= \kappa\, F_N \frac{C}{C_{1/2} + C} - \mu_F F_T
 \end{aligned}
 ```
@@ -89,7 +89,7 @@ Opcion B:
 \frac{dC}{dt}   &= \lambda_C\, C \left(1 - \frac{C}{K_C}\right) \boxed{+ C \alpha_F F_T} - \mu_C C - \theta\, C I \\
 \frac{dI}{dt}   &= \lambda_I\, I \left(1 - \frac{I + E}{K_I}\right) + \beta\, C I - \omega\, C I {- \omega_F\, F_T I} \\
 \frac{dE}{dt}   &= \omega\, C I {+ \omega_F\, F_T I} - \mu_E E \\
-\frac{dF_N}{dt} &= \lambda_F\, F_N \left(1 - \frac{F_N + F_T + C}{K_F}\right) - \kappa\, F_N \frac{C}{C_{1/2} + C} \\
+\frac{dF_N}{dt} &= \lambda_F\, F_N \left(1 - \frac{w_N F_N + w_T F_T + w_C C}{K_F}\right) - \kappa\, F_N \frac{C}{C_{1/2} + C} \\
 \frac{dF_T}{dt} &= \kappa\, F_N \frac{C}{C_{1/2} + C} - \mu_F F_T
 \end{aligned}
 ```
@@ -114,6 +114,7 @@ Las poblaciones se miden en células y el tiempo en las unidades de las tasas.
 | $\mu_F$ | tasa de muerte de los CAF | 1/tiempo |
 | $\omega_F$ | agotamiento de las inmunes por los CAF | 1/(célula · tiempo) |
 | $\alpha_F$ | aumento de la división tumoral por cada CAF | 1/célula |
+| $w_N$, $w_T$, $w_C$ | peso (share) de un fibroblasto / un CAF / una célula tumoral en el numerador del crowding del nicho de fibroblastos; ningún tipo es la referencia (por defecto 1: todos pesan igual) | adimensional |
 
 ### 2.2 Campo medio, adimensional
 
@@ -131,7 +132,7 @@ Los nombres siguen `DimensionlessParameters`, que reutiliza $\beta$, $\omega$ y 
 \frac{dc}{d\tau}   &= c\,(1 - c)\,(1 + \alpha_F f_T) - \gamma_C\, c - \sigma\, c\, i \\
 \frac{di}{d\tau}   &= \rho\, i\,(1 - i - e) + (\beta - \omega)\, c\, i - \omega_F\, f_T\, i \\
 \frac{de}{d\tau}   &= \omega\, c\, i + \omega_F\, f_T\, i - \mu_E\, e \\
-\frac{df_N}{d\tau} &= \rho_F\, f_N\,(1 - f_N - f_T - k\, c) - \kappa\, f_N \frac{c}{c_{1/2} + c} \\
+\frac{df_N}{d\tau} &= \rho_F\, f_N\,(1 - w_N f_N - w_T f_T - k\, w_C\, c) - \kappa\, f_N \frac{c}{c_{1/2} + c} \\
 \frac{df_T}{d\tau} &= \kappa\, f_N \frac{c}{c_{1/2} + c} - \mu_F\, f_T
 \end{aligned}
 ```
@@ -148,7 +149,7 @@ c_{1/2} = \frac{C_{1/2}}{K_C},\quad
 \alpha_F \leftarrow \alpha_F K_F
 ```
 
-El término $k\,c$ aparece porque en el cuaderno $C$ ocupa el nicho de los fibroblastos (ver §5.1).
+El término $k\,w_C\,c$ aparece porque en el cuaderno $C$ ocupa el nicho de los fibroblastos (ver §5.1). Los pesos $w_N$, $w_T$, $w_C$ ya son adimensionales y no cambian al adimensionalizar; con $w_N = w_T = w_C = 1$ (valor por defecto) se recupera el sistema sin pesos.
 
 ### 2.3 Gillespie: tasas efectivas por clon
 
@@ -165,7 +166,7 @@ Los términos nuevos en clases que ya existían van recuadrados. En estas fórmu
 ```math
 \begin{aligned}
 r_B(\text{fibroblast}) &= \lambda_{\text{fibroblast}}\, N_{\text{fibroblast}}\; g(Y_{\text{fibroblast}}, K_{\text{fibroblast}}),
-\qquad Y_{\text{fibroblast}} = N_{\text{fibroblast}} + N_{\text{caf}} + N_{\text{mutated}} \\
+\qquad Y_{\text{fibroblast}} = w_N\, N_{\text{fibroblast}} + w_T\, N_{\text{caf}} + w_C\, N_{\text{mutated}} \\
 r_E(\text{fibroblast}) &= \kappa\, N_{\text{fibroblast}}\, \frac{N_{\text{mutated}}}{C_{1/2} + N_{\text{mutated}}}
 \qquad (\text{fibroblast} \to \text{caf})
 \end{aligned}

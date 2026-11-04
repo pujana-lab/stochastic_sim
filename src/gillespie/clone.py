@@ -57,8 +57,10 @@ class Clone:
     def get_type(self) -> str:
         return self._type_name
     
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
+    def crowding_numerator(self, tissue_state: "TissueState") -> float:
+        """Y_X = Σ_T w_T · N_T over this type's crowding_pool (CellTypeConfig)."""
+        pop_map = tissue_state.pop_map
+        return sum(w * pop_map.get(t, 0) for t, w in self.cell_parameters.crowding_pool.items())
 
     def is_alive(self) -> bool:
         return self.N > 0
@@ -121,16 +123,9 @@ class WildTypeClone(Clone, clone_type = "base"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("base", 0) + pop_map.get("mutated", 0)
-
 class MutatedClone(Clone, clone_type = "mutated"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return tissue_state.pop_map.get("mutated", 0)
 
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """r_B(mutated) = λ_mutated · N_mutated · g(Y_mutated, K_mutated) · (1 + a_F · N_caf)   (a_F already / OMEGA)"""
@@ -154,12 +149,6 @@ class MutatedClone(Clone, clone_type = "mutated"):
 class ImmuneClone(Clone, clone_type = "immune"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-     
-
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("immune", 0) + pop_map.get("exhausted", 0)
     
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Birth rate increases through activation by cancer cells.
@@ -186,9 +175,6 @@ class ImmuneClone(Clone, clone_type = "immune"):
 class ExhaustedClone(Clone, clone_type = "exhausted"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
     
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Exhausted cells cannot divide."""
@@ -197,10 +183,6 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
 
 class FibroblastClone(Clone, clone_type = "fibroblast"):
     """F_N: logistic growth with Y_fibroblast = N_fibroblast + N_caf + N_mutated; activated by mutated."""
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("fibroblast", 0) + pop_map.get("caf", 0) + pop_map.get("mutated", 0)
 
     def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
         """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
@@ -215,9 +197,6 @@ class FibroblastClone(Clone, clone_type = "fibroblast"):
 
 class CAFClone(Clone, clone_type = "caf"):
     """F_T: does not divide, r_B(caf) = 0; r_D(caf) = μ_F · N_caf."""
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
 
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         return 0.0

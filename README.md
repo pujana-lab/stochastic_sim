@@ -154,9 +154,13 @@ g(Y_X, K_X) = max(0, 1 - Y_X / K_X)
 
 where:
 
-- `Y_X` is the competing population of clone type X: the sum returned by `crowding_numerator()`
-  (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`,
-  `Y_fibroblast = N_fibroblast + N_caf + N_mutated`)
+- `Y_X` is the competing population of clone type X: `Y_X = Σ_T w_T · N_T`, returned by
+  `crowding_numerator()` over `cell_parameters[X].crowding_pool = {T: w_T}`. The pool says
+  which types compete and how much each one weighs, X itself included; by default every
+  weight is 1 (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`,
+  `Y_fibroblast = N_fibroblast + N_caf + N_mutated`). In a JSON config the pool is merged
+  key by key with the default one: `{"mutated": 0.5}` only changes that weight, and a
+  weight of 0 removes the type from the pool
 - `K_X` is the carrying capacity of type X. In the Gillespie it is the scaled value
   (`actual_K`: `K · OMEGA`, adapted as below); in the mean-field equations it is unscaled
   (`K_C`, `K_I`)

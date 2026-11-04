@@ -19,6 +19,9 @@ class CellTypeConfig:
     fitness_gain: float = 0.0
     next_mutation: str = ""
     converts_to: str = ""   # target type of the CONVERSION/EXHAUSTION event ("" = none)
+    # Crowding pool {T: w_T}: types that compete for this type's niche and their weight,
+    # Y_X = Σ_T w_T · N_T. Empty = no crowding (g = 1). Weights are not scaled.
+    crowding_pool: dict[str, float] = field(default_factory=dict, hash=False)
 
 # default_id is the id of the root clone of each type: one per type, outside the
 # mutation lineage (mutants get parent.clone_id + (k,)). Every other module reads
@@ -31,13 +34,15 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         N=4000,
         K=1,
         nu=0.00002,
-        next_mutation= "mutated"
+        next_mutation= "mutated",
+        crowding_pool={"base": 1, "mutated": 1},
     ),
     "mutated": CellTypeConfig(
         default_id= (-3,),
         fitness_gain= 0.2,
         N=0,
         K=2,
+        crowding_pool={"mutated": 1},
     ),
     "immune": CellTypeConfig(
         default_id= (-1,),
@@ -47,6 +52,7 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         omega_exhaust=0.003,
         mu= 0.0,
         converts_to="exhausted",
+        crowding_pool={"immune": 1, "exhausted": 1},
     ),
     "exhausted": CellTypeConfig(
         default_id=(-2,),
@@ -61,6 +67,7 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         lambda0=0.005,                  # λ_F
         mu=0.0,
         converts_to="caf",              # activation F_N -> F_T (rate in FibroblastClone)
+        crowding_pool={"fibroblast": 1, "caf": 1, "mutated": 1},
     ),
     "caf": CellTypeConfig(              # F_T, cancer-associated / activated fibroblasts
         default_id=(-5,),
@@ -139,12 +146,18 @@ class SimulationConfig:
             elif isinstance(config, dict):
                 payload = dict(config)
                 if default is not None:
+                    if "crowding_pool" in payload:
+                        # merge key by key: only the weights given here change
+                        payload["crowding_pool"] = {**default.crowding_pool, **payload["crowding_pool"]}
                     cfg = replace(default, **payload)
                 else:
                     cfg = CellTypeConfig(**payload)
             else:
                 raise TypeError(...)
             normalized[cell_type] = cfg
+
+        for cell_type, cfg in normalized.items():
+            normalized[cell_type] = replace(cfg, crowding_pool=self._clean_crowding_pool(cell_type, cfg, normalized))
 
         ids = [cfg.default_id for cfg in normalized.values()]
         if None in ids or len(set(ids)) != len(ids):
@@ -154,6 +167,17 @@ class SimulationConfig:
             )
 
         object.__setattr__(self, "cell_parameters", normalized)
+
+    @staticmethod
+    def _clean_crowding_pool(cell_type: str, cfg: CellTypeConfig, cell_parameters: dict) -> dict[str, float]:
+        """Validate a crowding pool and drop zero weights (weight 0 = not in the pool)."""
+        unknown = set(cfg.crowding_pool) - set(cell_parameters)
+        if unknown:
+            raise ValueError(f"crowding_pool of {cell_type} names unknown cell types: {sorted(unknown)}")
+        negative = {t: w for t, w in cfg.crowding_pool.items() if w < 0}
+        if negative:
+            raise ValueError(f"crowding_pool weights of {cell_type} must be >= 0: {negative}")
+        return {t: float(w) for t, w in cfg.crowding_pool.items() if w != 0}
     
     # ─────────────────────────────────────────────────────────────────────────
     # Private initialization methods (called from __post_init__)
@@ -197,17 +221,12 @@ class SimulationConfig:
         scaled_omega_exhaust = self._scale_omega_exhaust(config.omega_exhaust)
         scaled_K = self._scale_K(config.K) if config.K is not None else None
         
-        return CellTypeConfig(
-            default_id=config.default_id,
-            N=config.N,
+        # replace() keeps every unscaled field, so new fields are not lost here
+        return replace(
+            config,
             K=scaled_K,
             lambda0=lambda0,
-            mu=config.mu,
-            nu=config.nu,
             omega_exhaust=scaled_omega_exhaust,
-            fitness_gain=config.fitness_gain,
-            next_mutation=config.next_mutation,
-            converts_to=config.converts_to,
         )
     
     def _scale_K(self, K: float | int) -> int:
