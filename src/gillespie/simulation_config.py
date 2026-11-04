@@ -18,7 +18,7 @@ class CellTypeConfig:
     omega_exhaust: float = 0.0
     fitness_gain: float = 0.0
     next_mutation: str = ""
-    converts_to: str = ""   # target type of the CONVERSION/EXHAUSTION event ("" = none)
+    converts_to: str = ""   # target type of the CONVERSION event ("" = none)
     # Crowding pool {T: w_T}: types that compete for this type's niche and their weight,
     # Y_X = Σ_T w_T · N_T. Empty = no crowding (g = 1). Weights are not scaled.
     crowding_pool: dict[str, float] = field(default_factory=dict, hash=False)

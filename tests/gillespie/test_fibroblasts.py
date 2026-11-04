@@ -41,7 +41,7 @@ def test_activation_is_michaelis_menten_in_cancer():
     cfg, pop = sim.config, sim.tissue_state.pop_map
     assert cfg.C_half == pytest.approx(0.1 * cfg.OMEGA)
     expected = cfg.kappa * pop["fibroblast"] * pop["mutated"] / (cfg.C_half + pop["mutated"])
-    assert _rate(sim, "EXHAUSTION", "fibroblast") == pytest.approx(expected)
+    assert _rate(sim, "CONVERSION", "fibroblast") == pytest.approx(expected)
 
 
 def test_activation_event_moves_one_fn_to_ft():
@@ -49,14 +49,14 @@ def test_activation_event_moves_one_fn_to_ft():
     cp, clones = sim.config.cell_parameters, sim.tissue_state.clones
     fn, ft = clones[cp["fibroblast"].default_id], clones[cp["caf"].default_id]
     n_fn, n_ft = fn.N, ft.N
-    sim._induce_exhaustion(fn)
+    sim._induce_conversion(fn)
     assert (fn.N, ft.N) == (n_fn - 1, n_ft + 1)
 
 
 def test_conversion_without_target_is_rejected():
     sim = _sim()
     with pytest.raises(ValueError, match="converts_to"):
-        sim._induce_exhaustion(sim.tissue_state.clones[sim.config.cell_parameters["caf"].default_id])
+        sim._induce_conversion(sim.tissue_state.clones[sim.config.cell_parameters["caf"].default_id])
 
 
 def test_caf_does_not_divide_and_dies_at_d_F():
@@ -69,7 +69,7 @@ def test_caf_induced_exhaustion_adds_to_cancer_induced():
     sim0, sim1 = _sim(), _sim(omega_F=0.002)
     pop = sim1.tissue_state.pop_map
     extra = sim1.config.omega_F * pop["immune"] * pop["caf"]
-    assert _rate(sim1, "EXHAUSTION", "immune") == pytest.approx(_rate(sim0, "EXHAUSTION", "immune") + extra)
+    assert _rate(sim1, "CONVERSION", "immune") == pytest.approx(_rate(sim0, "CONVERSION", "immune") + extra)
 
 
 def test_caf_boosts_cancer_birth():

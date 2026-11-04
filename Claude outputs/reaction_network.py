@@ -39,7 +39,7 @@ def type_delta(clone, kind: EventType) -> dict[str, int]:
         if not clone.next_mutation:
             raise ValueError(f"{T} mutates but has no next_mutation")
         return _add({T: -1}, {clone.next_mutation: +MUTANT_SEED_SIZE})
-    if kind == EventType.EXHAUSTION:
+    if kind == EventType.CONVERSION:
         if not clone.converts_to:
             raise ValueError(f"{T} converts but has no converts_to")
         return _add({T: -1}, {clone.converts_to: +1})
@@ -150,7 +150,7 @@ def apply_counts(sim, arrays: LeapArrays, R) -> None:
             for _ in range(k):  # k mutations = k new clones of MUTANT_SEED_SIZE, not one of 2k
                 sim.create_clone(clone_id=clone.next_child_id(), clone_type=clone.next_mutation,
                                  N=MUTANT_SEED_SIZE, parent=clone.clone_id)
-        elif event.kind == EventType.EXHAUSTION:
+        elif event.kind == EventType.CONVERSION:
             clone.N -= k
             clones[root_id[clone.converts_to]].N += k
 

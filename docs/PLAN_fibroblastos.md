@@ -305,7 +305,7 @@ Cada fase va en un commit aparte, con los tests en verde.
 
 **Comprobación**: la suite actual en verde, y una simulación con semilla idéntica a la de `main`.
 
-Opcional, en un commit propio: renombrar `EXHAUSTION` → `CONVERSION` y `exhaustion_rate_effective` → `conversion_rate_effective`. La clave `"re"` se mantiene en los snapshots y en el parquet.
+Hecho (04-11-2026, fase 0.3 de `PLAN_tau_leaping.md`): `EXHAUSTION` → `CONVERSION`, `exhaustion_rate_effective` → `conversion_rate_effective` y `_induce_exhaustion` → `_induce_conversion`. La clave `"re"` se mantiene en los snapshots y en el parquet; `event_kind` en el parquet de depuración pasa a valer `"conversion"`.
 
 ### Fase 2: tipos nuevos
 

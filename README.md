@@ -126,7 +126,7 @@ Each alive clone can participate in the following events:
 - `BIRTH`: one cell divides
 - `DEATH`: one cell dies
 - `MUTATION`: a new mutant clone is created and the parent clone loses one cell
-- `EXHAUSTION`: one cell converts into the clone's `converts_to` type: `immune` → `exhausted`
+- `CONVERSION`: one cell converts into the clone's `converts_to` type: `immune` → `exhausted`
   (exhaustion) or `fibroblast` → `caf` (activation)
 
 ### Base effective rate formulas
@@ -289,7 +289,7 @@ Each clone defines:
 - `birth_rate_effective(tissue_state)`
 - `death_rate_effective(tissue_state)`
 - `mutation_rate_effective(tissue_state)`
-- `exhaustion_rate_effective(tissue_state)`
+- `conversion_rate_effective(tissue_state)`
 - `crowding_numerator(tissue_state)`
 
 ### `src/gillespie/crowding_strategy.py`
@@ -348,7 +348,7 @@ make gillespie_plot
 - `TissueState` stores state and should remain separate from simulation logic.
 - `RateMatrix` is currently a simple event list; it does not implement tau-leap.
 - `MUTATION` events create a new clone of the configured `next_mutation` type.
-- `EXHAUSTION` events remove one cell from the source clone and add one to the root clone
+- `CONVERSION` events remove one cell from the source clone and add one to the root clone
   of its `converts_to` type (`exhausted` for `immune`, `caf` for `fibroblast`).
 
 ## Testing

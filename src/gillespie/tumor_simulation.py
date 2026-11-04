@@ -106,7 +106,7 @@ class TumorSimulation:
             rb = clone.birth_rate_effective(tissue_state=self.tissue_state)
             rd = clone.death_rate_effective(tissue_state=self.tissue_state)
             rm = clone.mutation_rate_effective(tissue_state=self.tissue_state)
-            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
+            re = clone.conversion_rate_effective(tissue_state=self.tissue_state)
             effective_rates[cid] = {"rb": rb, "rd": rd, "rm": rm, "re": re}
 
             if rb > 0:
@@ -123,7 +123,7 @@ class TumorSimulation:
                 )
             if re > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.get_type())
+                    Event(kind=EventType.CONVERSION, clone_id=cid, rate=re, clone_type=clone.get_type())
                 )
         self.tissue_state.effective_rates = effective_rates
         return rate_matrix
@@ -149,7 +149,7 @@ class TumorSimulation:
         )
         clone.kill()
     
-    def _induce_exhaustion(self, clone: Clone) -> None:
+    def _induce_conversion(self, clone: Clone) -> None:
         """Generic conversion: one cell of `clone` becomes one cell of `clone.converts_to`."""
         if not clone.converts_to:
             raise ValueError(f"{clone.get_type()} has no conversion target (converts_to)")
@@ -165,8 +165,8 @@ class TumorSimulation:
             clone.kill()
         elif event.kind == EventType.MUTATION:
             self._introduce_mutation(clone)
-        elif event.kind == EventType.EXHAUSTION:
-            self._induce_exhaustion(clone)
+        elif event.kind == EventType.CONVERSION:
+            self._induce_conversion(clone)
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
         

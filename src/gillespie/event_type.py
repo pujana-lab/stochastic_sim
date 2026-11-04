@@ -4,7 +4,7 @@ class EventType(Enum):
     BIRTH = "birth"
     DEATH = "death"
     MUTATION = "mutation"
-    EXHAUSTION = "exhaustion"   # generic conversion to `converts_to` (immune -> exhausted, fibroblast -> caf)
+    CONVERSION = "conversion"   # one cell becomes one cell of `converts_to` (immune -> exhausted, fibroblast -> caf)
 
     @property
     def consumes_parent(self) -> bool:

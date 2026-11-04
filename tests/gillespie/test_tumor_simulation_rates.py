@@ -21,7 +21,7 @@ def _with_mutant_clones(sim: TumorSimulation, sizes=(50, 120, 300)) -> TumorSimu
 
 
 def _rates_by_clone(rate_matrix) -> dict:
-    keys = {"BIRTH": "rb", "DEATH": "rd", "MUTATION": "rm", "EXHAUSTION": "re"}
+    keys = {"BIRTH": "rb", "DEATH": "rd", "MUTATION": "rm", "CONVERSION": "re"}
     rates = defaultdict(lambda: {"rb": 0.0, "rd": 0.0, "rm": 0.0, "re": 0.0})
     for e in rate_matrix.events:
         rates[e.clone_id][keys[e.kind.name]] = e.rate

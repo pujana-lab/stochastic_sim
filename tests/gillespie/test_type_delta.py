@@ -28,7 +28,7 @@ def _events():
 def test_consumes_parent_is_false_only_for_birth():
     assert {k: k.consumes_parent for k in EventType} == {
         EventType.BIRTH: False, EventType.DEATH: True,
-        EventType.MUTATION: True, EventType.EXHAUSTION: True,
+        EventType.MUTATION: True, EventType.CONVERSION: True,
     }
 
 
@@ -68,7 +68,7 @@ def test_mutation_into_same_type_sums_deltas():
 
 
 @pytest.mark.parametrize("clone_type, kind, attr", [
-    ("caf", EventType.EXHAUSTION, "converts_to"),
+    ("caf", EventType.CONVERSION, "converts_to"),
     ("immune", EventType.MUTATION, "next_mutation"),
 ])
 def test_missing_target_is_rejected(clone_type, kind, attr):

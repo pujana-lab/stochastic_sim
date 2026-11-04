@@ -76,7 +76,7 @@ class Clone:
     def mutation_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.mutation_rate * self.N * self.mutation_multiplier()
 
-    def exhaustion_rate_effective(self,tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.exhaustion_rate * self.N
         
     def type_delta(self, kind: EventType) -> Dict[str, int]:
@@ -90,7 +90,7 @@ class Clone:
             if not self.next_mutation:
                 raise ValueError(f"{t} has no mutation target (next_mutation)")
             target, gain = self.next_mutation, MUTANT_SEED_SIZE
-        elif kind == EventType.EXHAUSTION:
+        elif kind == EventType.CONVERSION:
             if not self.converts_to:
                 raise ValueError(f"{t} has no conversion target (converts_to)")
             target, gain = self.converts_to, 1
@@ -162,10 +162,10 @@ class ImmuneClone(Clone, clone_type = "immune"):
         # crowding_effect= #crowding donde tenemos que el numerador de la logistica es n_exhausted+sel
         return base_birth + activation_boost
     
-    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self, tissue_state: "TissueState") -> float:
         """r_E(immune) = ω · N_immune · N_mutated + ω_F · N_immune · N_caf
 (omega_F comes already divided by OMEGA from SimulationConfig when scale=True)"""
-        base_exhaustion =  super().exhaustion_rate_effective(tissue_state= tissue_state)
+        base_exhaustion =  super().conversion_rate_effective(tissue_state= tissue_state)
         n_cancer = tissue_state.pop_map.get("mutated",0)
         n_caf = tissue_state.pop_map.get("caf", 0)
         caf_exhaustion = self.N * n_caf * self.config.omega_F
@@ -184,7 +184,7 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
 class FibroblastClone(Clone, clone_type = "fibroblast"):
     """F_N: logistic growth with Y_fibroblast = N_fibroblast + N_caf + N_mutated; activated by mutated."""
 
-    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self, tissue_state: "TissueState") -> float:
         """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
         r_E(fibroblast) = κ · N_fibroblast · N_mutated / (C_½ + N_mutated)   (C_½ already x OMEGA)
         """
