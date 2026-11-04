@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, replace
 from typing import Optional, TYPE_CHECKING
 from src.gillespie.cloneId import CloneId
 import numpy as np
@@ -18,7 +18,11 @@ class CellTypeConfig:
     omega_exhaust: float = 0.0
     fitness_gain: float = 0.0
     next_mutation: str = ""
-    converts_to: str = ""   # target type of the CONVERSION/EXHAUSTION event ("" = none)
+    converts_to: str = ""   # target type of the CONVERSION event ("" = none)
+    # Crowding pool {T: w_T}: types that compete for this type's niche and their weight,
+    # Y_X = Σ_T w_T · N_T. Empty = no crowding (g = 1). Weights are not scaled.
+    crowding_pool: dict[str, float] = field(default_factory=dict, hash=False)
+    scaled: bool = False    # set by SimulationConfig when it scales by OMEGA; guards against scaling twice
 
 # default_id is the id of the root clone of each type: one per type, outside the
 # mutation lineage (mutants get parent.clone_id + (k,)). Every other module reads
@@ -31,13 +35,15 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         N=4000,
         K=1,
         nu=0.00002,
-        next_mutation= "mutated"
+        next_mutation= "mutated",
+        crowding_pool={"base": 1, "mutated": 1},
     ),
     "mutated": CellTypeConfig(
         default_id= (-3,),
         fitness_gain= 0.2,
         N=0,
         K=2,
+        crowding_pool={"mutated": 1},
     ),
     "immune": CellTypeConfig(
         default_id= (-1,),
@@ -47,6 +53,7 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         omega_exhaust=0.003,
         mu= 0.0,
         converts_to="exhausted",
+        crowding_pool={"immune": 1, "exhausted": 1},
     ),
     "exhausted": CellTypeConfig(
         default_id=(-2,),
@@ -61,6 +68,7 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         lambda0=0.005,                  # λ_F
         mu=0.0,
         converts_to="caf",              # activation F_N -> F_T (rate in FibroblastClone)
+        crowding_pool={"fibroblast": 1, "caf": 1, "mutated": 1},
     ),
     "caf": CellTypeConfig(              # F_T, cancer-associated / activated fibroblasts
         default_id=(-5,),
@@ -119,11 +127,16 @@ class SimulationConfig:
     
     # Crowding strategy (será inicializado en __post_init__)
     crowding_strategy: "CrowdingStrategy" = field(init=False, default=None)
+    # Values as given (defaults + JSON + CLI), before OMEGA scaling; see as_dict()
+    input_values: dict = field(init=False, default=None, repr=False, compare=False)
+
     def __post_init__(self):
         """Initialize configuration: normalize cell params, scale parameters, and set up strategies."""
         self._normalize_cell_parameters()
+        object.__setattr__(self, "input_values", self.as_dict())
         self._initialize_crowding_strategy()
         if self.scale:
+            self._check_not_scaled()
             self._scale_interaction_parameters()
             self._scale_cell_parameters()
 
@@ -139,12 +152,18 @@ class SimulationConfig:
             elif isinstance(config, dict):
                 payload = dict(config)
                 if default is not None:
+                    if "crowding_pool" in payload:
+                        # merge key by key: only the weights given here change
+                        payload["crowding_pool"] = {**default.crowding_pool, **payload["crowding_pool"]}
                     cfg = replace(default, **payload)
                 else:
                     cfg = CellTypeConfig(**payload)
             else:
-                raise TypeError(...)
+                raise TypeError(f"cell_parameters[{cell_type!r}] must be a dict or CellTypeConfig, got {type(config).__name__}")
             normalized[cell_type] = cfg
+
+        for cell_type, cfg in normalized.items():
+            normalized[cell_type] = replace(cfg, crowding_pool=self._clean_crowding_pool(cell_type, cfg, normalized))
 
         ids = [cfg.default_id for cfg in normalized.values()]
         if None in ids or len(set(ids)) != len(ids):
@@ -154,6 +173,43 @@ class SimulationConfig:
             )
 
         object.__setattr__(self, "cell_parameters", normalized)
+
+    def as_dict(self) -> dict:
+        """Current parameter values as plain data (the "used" values once scaled)."""
+        values = {f.name: getattr(self, f.name) for f in fields(self)
+                  if f.init and f.name != "cell_parameters"}
+        values["cell_parameters"] = {
+            cell_type: {f.name: getattr(cfg, f.name) for f in fields(cfg) if f.name != "scaled"}
+            | {"crowding_pool": dict(cfg.crowding_pool)}
+            for cell_type, cfg in self.cell_parameters.items()
+        }
+        return values
+
+    def _check_not_scaled(self) -> None:
+        """Refuse to scale values that are already scaled.
+
+        SimulationConfig overwrites its fields with the OMEGA-scaled values, so
+        rebuilding it from an existing config (dataclasses.replace, asdict, ...)
+        would scale beta, theta_I, K, lambda0, ... a second time without any error.
+        """
+        already = [t for t, cfg in self.cell_parameters.items() if cfg.scaled]
+        if already:
+            raise ValueError(
+                f"cell_parameters {already} are already scaled by OMEGA (was this config built "
+                "from another SimulationConfig, e.g. with dataclasses.replace?). Build it from "
+                "the unscaled values instead, e.g. SimulationConfig(**json_dict, theta_I=...)."
+            )
+
+    @staticmethod
+    def _clean_crowding_pool(cell_type: str, cfg: CellTypeConfig, cell_parameters: dict) -> dict[str, float]:
+        """Validate a crowding pool and drop zero weights (weight 0 = not in the pool)."""
+        unknown = set(cfg.crowding_pool) - set(cell_parameters)
+        if unknown:
+            raise ValueError(f"crowding_pool of {cell_type} names unknown cell types: {sorted(unknown)}")
+        negative = {t: w for t, w in cfg.crowding_pool.items() if w < 0}
+        if negative:
+            raise ValueError(f"crowding_pool weights of {cell_type} must be >= 0: {negative}")
+        return {t: float(w) for t, w in cfg.crowding_pool.items() if w != 0}
     
     # ─────────────────────────────────────────────────────────────────────────
     # Private initialization methods (called from __post_init__)
@@ -197,17 +253,13 @@ class SimulationConfig:
         scaled_omega_exhaust = self._scale_omega_exhaust(config.omega_exhaust)
         scaled_K = self._scale_K(config.K) if config.K is not None else None
         
-        return CellTypeConfig(
-            default_id=config.default_id,
-            N=config.N,
+        # replace() keeps every unscaled field, so new fields are not lost here
+        return replace(
+            config,
             K=scaled_K,
             lambda0=lambda0,
-            mu=config.mu,
-            nu=config.nu,
             omega_exhaust=scaled_omega_exhaust,
-            fitness_gain=config.fitness_gain,
-            next_mutation=config.next_mutation,
-            converts_to=config.converts_to,
+            scaled=True,
         )
     
     def _scale_K(self, K: float | int) -> int:

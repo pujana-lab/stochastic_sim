@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
 from src.gillespie.cloneId import CloneId
-from src.gillespie.clone import Clone
+from src.gillespie.clone import Clone, MUTANT_SEED_SIZE
 from src.gillespie.tissue_state import TissueState
 from src.gillespie.event import Event
 from src.gillespie.event_type import EventType
@@ -106,7 +106,7 @@ class TumorSimulation:
             rb = clone.birth_rate_effective(tissue_state=self.tissue_state)
             rd = clone.death_rate_effective(tissue_state=self.tissue_state)
             rm = clone.mutation_rate_effective(tissue_state=self.tissue_state)
-            re = clone.exhaustion_rate_effective(tissue_state=self.tissue_state)
+            re = clone.conversion_rate_effective(tissue_state=self.tissue_state)
             effective_rates[cid] = {"rb": rb, "rd": rd, "rm": rm, "re": re}
 
             if rb > 0:
@@ -123,7 +123,7 @@ class TumorSimulation:
                 )
             if re > 0:
                 rate_matrix.add_event(
-                    Event(kind=EventType.EXHAUSTION, clone_id=cid, rate=re, clone_type=clone.get_type())
+                    Event(kind=EventType.CONVERSION, clone_id=cid, rate=re, clone_type=clone.get_type())
                 )
         self.tissue_state.effective_rates = effective_rates
         return rate_matrix
@@ -134,39 +134,53 @@ class TumorSimulation:
         return -np.log(self.rng.random()) / total_rate
 
     # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
-    def _introduce_mutation(self, clone: Clone) -> None:
+    def _introduce_mutation(self, clone: Clone, k: int = 1) -> None:
+        """k mutations: k new clones of MUTANT_SEED_SIZE cells each, k parent cells removed."""
         assert clone.is_alive(), "Cannot mutate a dead clone."
         
         # Validate that the next mutation type exists in CloneType
         assert clone.next_mutation != "", "Clone is not supposed to be mutating"
         
-        
-        self.create_clone(
-            clone_id=clone.next_child_id(),
-            clone_type=clone.next_mutation,
-            N=2,
-            parent=clone.clone_id,
-        )
-        clone.kill()
+        for _ in range(k):
+            self.create_clone(
+                clone_id=clone.next_child_id(),
+                clone_type=clone.next_mutation,
+                N=MUTANT_SEED_SIZE,
+                parent=clone.clone_id,
+            )
+        clone.kill(k)
     
-    def _induce_exhaustion(self, clone: Clone) -> None:
-        """Generic conversion: one cell of `clone` becomes one cell of `clone.converts_to`."""
+    def _induce_conversion(self, clone: Clone, k: int = 1) -> None:
+        """Generic conversion: k cells of `clone` become k cells of `clone.converts_to`."""
         if not clone.converts_to:
             raise ValueError(f"{clone.get_type()} has no conversion target (converts_to)")
         target_id = self.config.cell_parameters[clone.converts_to].default_id
-        clone.kill()
-        self.tissue_state.clones[target_id].divide()
+        clone.kill(k)
+        self.tissue_state.clones[target_id].divide(k)
     
-    def _apply_event(self, event: Event) -> None:
+    def _apply_event(self, event: Event, k: int = 1) -> None:
+        """Fire `event` k times at once (k = 1 for the SSA; a leap passes its count).
+
+        Refuses to consume more parent cells than the clone has, so a bulk
+        conversion or mutation never creates cells from nothing.
+        """
+        if k < 0:
+            raise ValueError(f"k must be >= 0, got {k}")
+        if k == 0:
+            return
         clone = self.tissue_state.clones[event.clone_id]
+        if event.kind.consumes_parent and k > clone.N:
+            raise ValueError(
+                f"{event.kind.name} x{k} on clone {event.clone_id} with only N = {clone.N} cells"
+            )
         if event.kind == EventType.BIRTH:
-            clone.divide()
+            clone.divide(k)
         elif event.kind == EventType.DEATH:
-            clone.kill()
+            clone.kill(k)
         elif event.kind == EventType.MUTATION:
-            self._introduce_mutation(clone)
-        elif event.kind == EventType.EXHAUSTION:
-            self._induce_exhaustion(clone)
+            self._introduce_mutation(clone, k)
+        elif event.kind == EventType.CONVERSION:
+            self._induce_conversion(clone, k)
         else:
             raise ValueError(f"Unknown event kind: {event.kind}")
         

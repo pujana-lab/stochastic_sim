@@ -50,6 +50,7 @@ sketches and notebooks are mapped in the last section; do not copy them.
 | tumour size for half-maximal activation | `C_½` | `c_½ = C_½ / K_C` | `C_half` | fraction of `OMEGA`, × `OMEGA` |
 | immune exhaustion by CAFs | `ω_F` | `ω_F ← ω_F K_F / λ_C` | `omega_F` | ÷ `OMEGA` |
 | CAF support of tumour birth | `α_F` | `α_F ← α_F K_F` | `alpha_F` | ÷ `OMEGA` |
+| crowding weight: share of type T in the crowding numerator of X | `w_T` (in the factor of X) | `w_T` (already dimensionless) | `cell_parameters[X].crowding_pool[T]` | unscaled (default 1) |
 
 - `←` means the dimensionless group reuses the name of the dimensional
   parameter, as in `DimensionlessParameters`.
@@ -77,7 +78,7 @@ sketches and notebooks are mapped in the last section; do not copy them.
 
 The mean-field equations write the logistic factor explicitly, with unscaled
 capacities. The Gillespie writes it as `g(Y_X, K_X) = 1 − Y_X / K_X`, where
-`Y_X` is the population that competes with type X (`crowding_numerator()`)
+`Y_X` is the (weighted) population that competes with type X (`crowding_numerator()`)
 and `K_X` is `actual_K`: × `OMEGA`, inflated by `AdaptedCrowding`, and
 time-dependent if `decay`. The code clamps it, `max(0, g)`. `g` is Gillespie
 notation only; do not use it in the ODEs.
@@ -87,7 +88,16 @@ notation only; do not use it in the ODEs.
 | `base` | — | `N_base + N_mutated` |
 | `mutated` | `1 − C / K_C` | `N_mutated` |
 | `immune` | `1 − (I + E) / K_I` | `N_immune + N_exhausted` |
-| `fibroblast` | `1 − (F_N + F_T + C) / K_F` | `N_fibroblast + N_caf + N_mutated` |
+| `fibroblast` | `1 − (w_N F_N + w_T F_T + w_C C) / K_F` | `w_N N_fibroblast + w_T N_caf + w_C N_mutated` |
+
+The table writes the weights only where they are biologically relevant (the fibroblast
+niche). In general `Y_X = Σ_T w_T N_T` over the crowding pool of X (`cell_parameters[X].crowding_pool`,
+the types that compete), and `w_T` is the share that one cell of T takes in X's crowding
+numerator. Every member has its own weight, X itself included (`w_N` for F_N in the
+fibroblast niche): no type is the reference. By default every weight is 1, so the factors reduce to the plain sums; a config
+changes only the weights it names, and weight 0 removes a type from the pool. The
+weight belongs to the niche X: if two niches weight the same type differently, write
+`w_{X,T}`. Dimensionless: `1 − w_N f_N − w_T f_T − k w_C c`.
 
 Do not use the older `C(t)`, `N_crowd` or `K_t`.
 

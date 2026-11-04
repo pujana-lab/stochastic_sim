@@ -34,8 +34,9 @@ infrastructure.config
               |
               v
 SimulationConfig
-  validates/normalizes cell parameters
-  scales parameters
+  validates/normalizes cell parameters (merges crowding pools)
+  keeps the unscaled inputs (input_values)
+  scales parameters (once; rescaling raises)
   selects crowding strategy
               |
               v
@@ -53,8 +54,9 @@ TumorSimulation
               |
               v
 infrastructure
-  csv_output / display
+  csv_output / run_config_output / display
   Parquet history, clone, rate, and debug artefacts
+  run_config.txt / .json (input and used parameter values)
 ```
 
 ## Responsibility map
@@ -89,6 +91,18 @@ per entry of `cell_parameters`, in that order, which is also the event order
 in the rate matrix (seeded runs depend on it). The output writers name the
 root clones from `default_id`. `SimulationConfig` rejects a cell type without
 a `default_id` or with one that another type already uses.
+
+`SimulationConfig` overwrites its fields with the `OMEGA`-scaled values and
+keeps the merged unscaled inputs in `input_values`. Scaled `CellTypeConfig`s
+are marked `scaled=True`, and rebuilding a config from them (for example with
+`dataclasses.replace`) raises instead of scaling twice: vary a parameter by
+building a new `SimulationConfig` from unscaled values. Every entry point
+saves both with `infrastructure.run_config_output.save_run_config`: a table
+(`config_report.format_config`) in `.txt` and `{"input", "used"}` in `.json`,
+whose `input` section is a valid JSON configuration that reproduces the run.
+The CLI writes `./run_config.{txt,json}`; `scripts/run_batch_simulations.py`
+and `param_sweep.py` write `config.{txt,json}` in each run directory. The JSON loader turns `default_id`
+lists back into tuples.
 
 The dimensional-to-Gillespie calculator is implemented in
 [`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py).

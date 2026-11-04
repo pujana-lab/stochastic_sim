@@ -1,18 +1,27 @@
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING, Dict, Type
+from typing import Optional, TYPE_CHECKING, Dict, Tuple, Type
 
 from src.gillespie.cloneId import CloneId
+from src.gillespie.event_type import EventType
 from src.gillespie.simulation_config import SimulationConfig
 
 if TYPE_CHECKING:
     from src.gillespie.tissue_state import TissueState
 
+# Cells in a new mutant clone: a MUTATION removes 1 parent cell and adds a clone of
+# this size. Shared by TumorSimulation._introduce_mutation and Clone.type_delta.
+MUTANT_SEED_SIZE: int = 2
 
 
 class Clone:
 
     _registry: Dict[str, Type["Clone"]] = {}
     _type_name: str = None
+
+    # Type totals this type's rate methods read from pop_map outside its crowding pool
+    # (interactions). The tau leaper watches them; tests/gillespie/test_hazard_inputs.py
+    # checks the list against the rates.
+    hazard_inputs: Tuple[str, ...] = ()
 
     def __init_subclass__(cls, clone_type: str = None, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -53,8 +62,10 @@ class Clone:
     def get_type(self) -> str:
         return self._type_name
     
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
+    def crowding_numerator(self, tissue_state: "TissueState") -> float:
+        """Y_X = Σ_T w_T · N_T over this type's crowding_pool (CellTypeConfig)."""
+        pop_map = tissue_state.pop_map
+        return sum(w * pop_map.get(t, 0) for t, w in self.cell_parameters.crowding_pool.items())
 
     def is_alive(self) -> bool:
         return self.N > 0
@@ -70,14 +81,42 @@ class Clone:
     def mutation_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.mutation_rate * self.N * self.mutation_multiplier()
 
-    def exhaustion_rate_effective(self,tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self,tissue_state: "TissueState") -> float:
         return self.exhaustion_rate * self.N
         
-    def divide(self) -> None:
-        self.N += 1
+    def type_delta(self, kind: EventType) -> Dict[str, int]:
+        """Change of the type totals N_T caused by one event of this clone (mirrors _apply_event)."""
+        t = self.get_type()
+        if kind == EventType.BIRTH:
+            return {t: 1}
+        elif kind == EventType.DEATH:
+            return {t: -1}
+        elif kind == EventType.MUTATION:
+            if not self.next_mutation:
+                raise ValueError(f"{t} has no mutation target (next_mutation)")
+            target, gain = self.next_mutation, MUTANT_SEED_SIZE
+        elif kind == EventType.CONVERSION:
+            if not self.converts_to:
+                raise ValueError(f"{t} has no conversion target (converts_to)")
+            target, gain = self.converts_to, 1
+        else:
+            raise ValueError(f"Unknown event kind: {kind}")
 
-    def kill(self) -> None:
-        self.N = max(0, self.N - 1)
+        delta = {t: -1}
+        delta[target] = delta.get(target, 0) + gain   # adds up if target == t
+        return {k: v for k, v in delta.items() if v != 0}
+
+    def divide(self, k: int = 1) -> None:
+        """Add k cells (k births, or k cells arriving by conversion)."""
+        if k < 0:
+            raise ValueError(f"k must be >= 0, got {k}")
+        self.N += k
+
+    def kill(self, k: int = 1) -> None:
+        """Remove k cells, clamped at N = 0. Callers that must not lose cells check k <= N."""
+        if k < 0:
+            raise ValueError(f"k must be >= 0, got {k}")
+        self.N = max(0, self.N - k)
 
     def next_child_id(self) -> CloneId:
         self.children_count += 1
@@ -95,16 +134,11 @@ class WildTypeClone(Clone, clone_type = "base"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("base", 0) + pop_map.get("mutated", 0)
-
 class MutatedClone(Clone, clone_type = "mutated"):
+    hazard_inputs = ("immune", "caf")          # θ_I · N_immune in r_D, α_F · N_caf in r_B
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return tissue_state.pop_map.get("mutated", 0)
 
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """r_B(mutated) = λ_mutated · N_mutated · g(Y_mutated, K_mutated) · (1 + a_F · N_caf)   (a_F already / OMEGA)"""
@@ -126,14 +160,10 @@ class MutatedClone(Clone, clone_type = "mutated"):
     
 
 class ImmuneClone(Clone, clone_type = "immune"):
+    hazard_inputs = ("mutated", "caf")         # β · N_mutated in r_B, ω · N_mutated + ω_F · N_caf in r_E
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-     
-
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("immune", 0) + pop_map.get("exhausted", 0)
     
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Birth rate increases through activation by cancer cells.
@@ -147,10 +177,10 @@ class ImmuneClone(Clone, clone_type = "immune"):
         # crowding_effect= #crowding donde tenemos que el numerador de la logistica es n_exhausted+sel
         return base_birth + activation_boost
     
-    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self, tissue_state: "TissueState") -> float:
         """r_E(immune) = ω · N_immune · N_mutated + ω_F · N_immune · N_caf
 (omega_F comes already divided by OMEGA from SimulationConfig when scale=True)"""
-        base_exhaustion =  super().exhaustion_rate_effective(tissue_state= tissue_state)
+        base_exhaustion =  super().conversion_rate_effective(tissue_state= tissue_state)
         n_cancer = tissue_state.pop_map.get("mutated",0)
         n_caf = tissue_state.pop_map.get("caf", 0)
         caf_exhaustion = self.N * n_caf * self.config.omega_F
@@ -160,9 +190,6 @@ class ImmuneClone(Clone, clone_type = "immune"):
 class ExhaustedClone(Clone, clone_type = "exhausted"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
     
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         """Exhausted cells cannot divide."""
@@ -172,11 +199,9 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
 class FibroblastClone(Clone, clone_type = "fibroblast"):
     """F_N: logistic growth with Y_fibroblast = N_fibroblast + N_caf + N_mutated; activated by mutated."""
 
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        pop_map = tissue_state.pop_map
-        return pop_map.get("fibroblast", 0) + pop_map.get("caf", 0) + pop_map.get("mutated", 0)
+    hazard_inputs = ("mutated",)               # κ · N_mutated / (C_½ + N_mutated) in r_E
 
-    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+    def conversion_rate_effective(self, tissue_state: "TissueState") -> float:
         """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
         r_E(fibroblast) = κ · N_fibroblast · N_mutated / (C_½ + N_mutated)   (C_½ already x OMEGA)
         """
@@ -189,9 +214,6 @@ class FibroblastClone(Clone, clone_type = "fibroblast"):
 
 class CAFClone(Clone, clone_type = "caf"):
     """F_T: does not divide, r_B(caf) = 0; r_D(caf) = μ_F · N_caf."""
-
-    def crowding_numerator(self, tissue_state: "TissueState") -> int:
-        return 0
 
     def birth_rate_effective(self, tissue_state: "TissueState") -> float:
         return 0.0

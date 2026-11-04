@@ -13,7 +13,7 @@ The diagram is *inferred*, not drawn by hand:
 
 Edge semantics (by the method in which the read happens):
 
-    crowding_numerator      "Y_T = N_T + N_S + ..." in T's label (crowding g(Y_T, K_T)) (or S -.-o T with --crowding-edges)
+    crowding_pool (config)  "Y_T = N_T + N_S + ..." in T's label (crowding g(Y_T, K_T)) (or S -.-o T with --crowding-edges)
     birth_rate_effective    S ==> T    S raises T's birth (activation / support)
     death_rate_effective    S --x T    S kills T
     exhaustion_rate_effective /
@@ -319,6 +319,15 @@ def inspect_clone_types() -> dict[str, dict]:
                         "zero": _returns_zero(fn),
                         "formula": _RateExpr(fn, type_name).formula(),
                     }
+        # Crowding is data (CellTypeConfig.crowding_pool), not a per-class override:
+        # read it from the defaults, keeping the declared order for the "Y_X = ..." label.
+        cfg = _DEFAULT_CELL_PARAMETERS.get(type_name)
+        pool = tuple(getattr(cfg, "crowding_pool", {}) or {})
+        if pool and "crowding_numerator" not in methods:
+            methods["crowding_numerator"] = {
+                "reads": set(pool), "reads_in_order": list(pool),
+                "params": [], "by_src": {}, "zero": False, "formula": None,
+            }
         info[type_name] = {"cls": cls, "methods": methods}
     return info
 
@@ -338,6 +347,12 @@ def _conversion_target(type_name: str, cfg: CellTypeConfig) -> str | None:
 
 def _sym(t: str) -> str:
     return SYMBOLS.get(t, t)
+
+
+def _wsym(t: str) -> str:
+    """Subscript of the crowding weight w_T (docs/NOTATION.md): w_C, w_I, w_T, w_N..."""
+    m = re.fullmatch(r"F<sub>(\w+)</sub>", _sym(t))
+    return m.group(1) if m else _sym(t)
 
 
 def _legend(colors: dict[str, str], crowding_edges: bool) -> str:
@@ -407,7 +422,11 @@ def build_mermaid(crowding_edges: bool = False) -> str:
             lines_lbl.append(rate(meth, "E"))
         crowd = m.get("crowding_numerator")
         if crowd and not birth_off:
-            num = " + ".join(f"N<sub>{k}</sub>" for k in crowd["reads_in_order"]) or "0"
+            weighted = {k for k, w in (getattr(cfg, "crowding_pool", {}) or {}).items() if w != 1}   # w_T = 1 not drawn
+            num = " + ".join(
+                (f"w<sub>{_wsym(k)}</sub> · " if k in weighted else "") + f"N<sub>{k}</sub>"
+                for k in crowd["reads_in_order"]
+            ) or "0"
             lines_lbl.append(f"Y<sub>{t}</sub> = {num}")
         head = f"<b>{t}</b>" + (f" ({_sym(t)})" if t in SYMBOLS else "")
         label = head + "".join(f"<br/><small>{x}</small>" for x in lines_lbl)

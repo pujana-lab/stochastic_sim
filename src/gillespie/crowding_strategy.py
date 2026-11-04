@@ -14,9 +14,7 @@ class CrowdingStrategy(ABC):
     def crowding(self, clone: "Clone", tissue_state: "TissueState") -> float:
         if not self.config.use_logistic:
             return 1.0
-        if clone.get_type() == "exhausted":
-            return 1.0
-            
+        # exhausted / caf need no special case: λ = 0 gives K = ∞ and their pool is empty
         numerator_N = clone.crowding_numerator(tissue_state)
         if self.config.decay:
             Kt = max(clone.K_min, clone.actual_K - self.config.decline * tissue_state.t)

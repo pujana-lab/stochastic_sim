@@ -126,7 +126,7 @@ Each alive clone can participate in the following events:
 - `BIRTH`: one cell divides
 - `DEATH`: one cell dies
 - `MUTATION`: a new mutant clone is created and the parent clone loses one cell
-- `EXHAUSTION`: one cell converts into the clone's `converts_to` type: `immune` → `exhausted`
+- `CONVERSION`: one cell converts into the clone's `converts_to` type: `immune` → `exhausted`
   (exhaustion) or `fibroblast` → `caf` (activation)
 
 ### Base effective rate formulas
@@ -154,9 +154,13 @@ g(Y_X, K_X) = max(0, 1 - Y_X / K_X)
 
 where:
 
-- `Y_X` is the competing population of clone type X: the sum returned by `crowding_numerator()`
-  (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`,
-  `Y_fibroblast = N_fibroblast + N_caf + N_mutated`)
+- `Y_X` is the competing population of clone type X: `Y_X = Σ_T w_T · N_T`, returned by
+  `crowding_numerator()` over `cell_parameters[X].crowding_pool = {T: w_T}`. The pool says
+  which types compete and how much each one weighs, X itself included; by default every
+  weight is 1 (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`,
+  `Y_fibroblast = N_fibroblast + N_caf + N_mutated`). In a JSON config the pool is merged
+  key by key with the default one: `{"mutated": 0.5}` only changes that weight, and a
+  weight of 0 removes the type from the pool
 - `K_X` is the carrying capacity of type X. In the Gillespie it is the scaled value
   (`actual_K`: `K · OMEGA`, adapted as below); in the mean-field equations it is unscaled
   (`K_C`, `K_I`)
@@ -285,7 +289,7 @@ Each clone defines:
 - `birth_rate_effective(tissue_state)`
 - `death_rate_effective(tissue_state)`
 - `mutation_rate_effective(tissue_state)`
-- `exhaustion_rate_effective(tissue_state)`
+- `conversion_rate_effective(tissue_state)`
 - `crowding_numerator(tissue_state)`
 
 ### `src/gillespie/crowding_strategy.py`
@@ -344,7 +348,7 @@ make gillespie_plot
 - `TissueState` stores state and should remain separate from simulation logic.
 - `RateMatrix` is currently a simple event list; it does not implement tau-leap.
 - `MUTATION` events create a new clone of the configured `next_mutation` type.
-- `EXHAUSTION` events remove one cell from the source clone and add one to the root clone
+- `CONVERSION` events remove one cell from the source clone and add one to the root clone
   of its `converts_to` type (`exhausted` for `immune`, `caf` for `fibroblast`).
 
 ## Testing
