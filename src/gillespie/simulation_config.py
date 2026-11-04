@@ -18,6 +18,7 @@ class CellTypeConfig:
     omega_exhaust: float = 0.0
     fitness_gain: float = 0.0
     next_mutation: str = ""
+    converts_to: str = ""   # target type of the CONVERSION/EXHAUSTION event ("" = none)
 
 # default_id is the id of the root clone of each type: one per type, outside the
 # mutation lineage (mutants get parent.clone_id + (k,)). Every other module reads
@@ -45,11 +46,27 @@ _DEFAULT_CELL_PARAMETERS: dict[str, CellTypeConfig] = {
         lambda0= 0.005,
         omega_exhaust=0.003,
         mu= 0.0,
+        converts_to="exhausted",
     ),
     "exhausted": CellTypeConfig(
         default_id=(-2,),
         N=0,
         lambda0= 0.0
+    ),
+    # Fibroblasts are OFF by default (N=0): the 4-type model is reproduced exactly.
+    "fibroblast": CellTypeConfig(       # F_N, naive / normal fibroblasts
+        default_id=(-4,),
+        N=0,
+        K=1,                            # K_F (fraction of OMEGA)
+        lambda0=0.005,                  # λ_F
+        mu=0.0,
+        converts_to="caf",              # activation F_N -> F_T (rate in FibroblastClone)
+    ),
+    "caf": CellTypeConfig(              # F_T, cancer-associated / activated fibroblasts
+        default_id=(-5,),
+        N=0,
+        lambda0=0.0,                    # no proliferation
+        mu=0.002,                       # μ_F
     ),
 }
 
@@ -74,6 +91,12 @@ class SimulationConfig:
     # interaction parameters
     theta_I: float = 0.0005  # Kill rate: immune cells killing mutated cells (N_mutant * N_immune * theta_I)
     beta: float = 0.0004   # Activation rate: mutated cells activating immune cells (N_immune * N_mutant * beta)
+
+    # fibroblast interaction parameters (all 0 -> fibroblast module inert)
+    kappa: float = 0.0     # κ: max activation rate F_N -> F_T by mutated cells (Michaelis-Menten, NOT scaled)
+    C_half: float = 0.1    # C_½: N_mutated giving half-maximal activation (fraction of OMEGA, x OMEGA)
+    omega_F: float = 0.0   # ω_F: exhaustion immune -> exhausted driven by caf (N_immune * N_caf * omega_F)
+    alpha_F: float = 0.0   # a_F: caf support of mutated birth, factor (1 + alpha_F * N_caf)
    
 
     # instability / mutation parameters
@@ -140,6 +163,9 @@ class SimulationConfig:
         """Scale beta and theta_I by OMEGA for population-level dynamics."""
         object.__setattr__(self, 'beta', self.beta / self.OMEGA)
         object.__setattr__(self, 'theta_I', self.theta_I / self.OMEGA)
+        object.__setattr__(self, 'omega_F', self.omega_F / self.OMEGA)
+        object.__setattr__(self, 'alpha_F', self.alpha_F / self.OMEGA)
+        object.__setattr__(self, 'C_half', self.C_half * self.OMEGA)
     
     def _scale_cell_parameters(self) -> None:
         """Scale parameters for each cell type.
@@ -181,6 +207,7 @@ class SimulationConfig:
             omega_exhaust=scaled_omega_exhaust,
             fitness_gain=config.fitness_gain,
             next_mutation=config.next_mutation,
+            converts_to=config.converts_to,
         )
     
     def _scale_K(self, K: float | int) -> int:

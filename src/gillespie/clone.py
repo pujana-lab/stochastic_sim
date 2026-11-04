@@ -41,6 +41,7 @@ class Clone:
         self.K_min: int = config.Kmin
 
         self.next_mutation: str = self.cell_parameters.next_mutation
+        self.converts_to: str = self.cell_parameters.converts_to
         self.instability: float = 0.0
         self.buildup: float = 0.0
         self.d1: float = 0.0
@@ -105,6 +106,11 @@ class MutatedClone(Clone, clone_type = "mutated"):
     def crowding_numerator(self, tissue_state: "TissueState") -> int:
         return tissue_state.pop_map.get("mutated", 0)
 
+    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
+        """r_B(mutated) = λ_mutated · N_mutated · g(Y_mutated, K_mutated) · (1 + a_F · N_caf)   (a_F already / OMEGA)"""
+        base_birth = super().birth_rate_effective(tissue_state)
+        n_caf = tissue_state.pop_map.get("caf", 0)
+        return base_birth * (1.0 + self.config.alpha_F * n_caf)
     
     def death_rate_effective(self, tissue_state: "TissueState") -> float:
         """Death rate increases due to immune cell killing.
@@ -142,10 +148,13 @@ class ImmuneClone(Clone, clone_type = "immune"):
         return base_birth + activation_boost
     
     def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
-        """Exhaustion: exhaustion_rate * N_immune * N_cancer"""
+        """r_E(immune) = ω · N_immune · N_mutated + ω_F · N_immune · N_caf
+(omega_F comes already divided by OMEGA from SimulationConfig when scale=True)"""
         base_exhaustion =  super().exhaustion_rate_effective(tissue_state= tissue_state)
         n_cancer = tissue_state.pop_map.get("mutated",0)
-        return base_exhaustion * n_cancer
+        n_caf = tissue_state.pop_map.get("caf", 0)
+        caf_exhaustion = self.N * n_caf * self.config.omega_F
+        return base_exhaustion * n_cancer + caf_exhaustion
 
 
 class ExhaustedClone(Clone, clone_type = "exhausted"):
@@ -160,5 +169,29 @@ class ExhaustedClone(Clone, clone_type = "exhausted"):
         return 0.0
 
 
-        
+class FibroblastClone(Clone, clone_type = "fibroblast"):
+    """F_N: logistic growth with Y_fibroblast = N_fibroblast + N_caf + N_mutated; activated by mutated."""
 
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        pop_map = tissue_state.pop_map
+        return pop_map.get("fibroblast", 0) + pop_map.get("caf", 0) + pop_map.get("mutated", 0)
+
+    def exhaustion_rate_effective(self, tissue_state: "TissueState") -> float:
+        """Activation fibroblast -> caf (Michaelis-Menten in N_mutated):
+        r_E(fibroblast) = κ · N_fibroblast · N_mutated / (C_½ + N_mutated)   (C_½ already x OMEGA)
+        """
+        n_cancer = tissue_state.pop_map.get("mutated", 0)
+        denom = self.config.C_half + n_cancer
+        if denom <= 0:
+            return 0.0
+        return self.config.kappa * self.N * n_cancer / denom
+
+
+class CAFClone(Clone, clone_type = "caf"):
+    """F_T: does not divide, r_B(caf) = 0; r_D(caf) = μ_F · N_caf."""
+
+    def crowding_numerator(self, tissue_state: "TissueState") -> int:
+        return 0
+
+    def birth_rate_effective(self, tissue_state: "TissueState") -> float:
+        return 0.0

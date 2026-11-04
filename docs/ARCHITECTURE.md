@@ -8,10 +8,15 @@
 
 `moran` is a Python research simulator for stochastic tumour clone dynamics.
 The maintained implementation is the event-driven Gillespie simulator under
-`src/gillespie/`. It models four clone types:
+`src/gillespie/`. It models six clone types:
 
 `base` -> `mutated`  
-`immune` -> `exhausted`
+`immune` -> `exhausted`  
+`fibroblast` -> `caf` (off by default: both start at `N = 0`)
+
+`base` -> `mutated` is a mutation (a new child clone). The other two arrows are
+conversions: one cell moves to the root clone of the type named in
+`CellTypeConfig.converts_to`.
 
 The repository also contains notebooks, generated research artefacts, and
 historical refactoring notes. Those are supporting material, not alternate

@@ -150,8 +150,12 @@ class TumorSimulation:
         clone.kill()
     
     def _induce_exhaustion(self, clone: Clone) -> None:
-        self.tissue_state.clones[clone.clone_id].kill()
-        self.tissue_state.clones[self.config.cell_parameters["exhausted"].default_id].divide()
+        """Generic conversion: one cell of `clone` becomes one cell of `clone.converts_to`."""
+        if not clone.converts_to:
+            raise ValueError(f"{clone.get_type()} has no conversion target (converts_to)")
+        target_id = self.config.cell_parameters[clone.converts_to].default_id
+        clone.kill()
+        self.tissue_state.clones[target_id].divide()
     
     def _apply_event(self, event: Event) -> None:
         clone = self.tissue_state.clones[event.clone_id]

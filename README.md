@@ -4,7 +4,7 @@
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Update that document when
 > boundaries, configuration precedence, or output flow changes.
 
-A stochastic Gillespie-based tumor clone simulator for a simplified tissue model. The implementation in `src/gillespie/` tracks four clone types and computes event rates from clone-specific parameters, crowding, and cell-cell interactions.
+A stochastic Gillespie-based tumor clone simulator for a simplified tissue model. The implementation in `src/gillespie/` tracks six clone types (two of them, the fibroblasts, off by default) and computes event rates from clone-specific parameters, crowding, and cell-cell interactions.
 
 This simulator implements the individual-clone, discrete-population extension of a deterministic three-population model of *BRCA1*-driven tumor initiation (tumor clone, active immune, exhausted immune), developed as part of the Pujana Lab's mathematical modeling framework for hereditary breast cancer initiation. It is designed to resolve the fate of single newly arisen mutant clones under stochastic fluctuation, a regime the deterministic mean-field limit cannot capture. It is intended to be coupled with [`cellSim`](https://github.com/pujana-lab/cellSim), an individual-based model of genomic-instability accumulation and TP53-gated apoptosis, via the `instability` term in the mutation rate below.
 
@@ -17,12 +17,18 @@ claims against the current source.
 
 ## Overview
 
-The simulation models four clone classes:
+The simulation models six clone classes:
 
 - `base`: healthy (wild type) cells
 - `mutated`: tumor cells
 - `immune`: immune cells
 - `exhausted`: exhausted immune cells
+- `fibroblast`: normal fibroblasts (F_N)
+- `caf`: cancer-associated fibroblasts (F_T)
+
+The fibroblast module is off by default (`N = 0` for both types and
+`kappa = omega_F = alpha_F = 0`), which reproduces the four-type model exactly.
+Its design is in [`docs/PLAN_fibroblastos.md`](docs/PLAN_fibroblastos.md).
 
 Each clone type has its own base parameters defined in `simulation_config.py`. Effective rates use the full tissue state kept in `TissueState` and may include interaction terms between clone types. Code architecture allows for additional clone classes (such as intermediate pre-neoplastic states) to be implemented in a straightforward way.
 
@@ -120,7 +126,8 @@ Each alive clone can participate in the following events:
 - `BIRTH`: one cell divides
 - `DEATH`: one cell dies
 - `MUTATION`: a new mutant clone is created and the parent clone loses one cell
-- `EXHAUSTION`: an immune clone becomes exhausted and one exhausted cell is produced
+- `EXHAUSTION`: one cell converts into the clone's `converts_to` type: `immune` → `exhausted`
+  (exhaustion) or `fibroblast` → `caf` (activation)
 
 ### Base effective rate formulas
 
@@ -148,7 +155,8 @@ g(Y_X, K_X) = max(0, 1 - Y_X / K_X)
 where:
 
 - `Y_X` is the competing population of clone type X: the sum returned by `crowding_numerator()`
-  (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`)
+  (e.g. `Y_base = N_base + N_mutated`, `Y_immune = N_immune + N_exhausted`,
+  `Y_fibroblast = N_fibroblast + N_caf + N_mutated`)
 - `K_X` is the carrying capacity of type X. In the Gillespie it is the scaled value
   (`actual_K`: `K · OMEGA`, adapted as below); in the mean-field equations it is unscaled
   (`K_C`, `K_I`)
@@ -169,6 +177,12 @@ Some clone types modify the base formula with interactions.
 
 #### `MutatedClone`
 
+CAFs support tumor birth:
+
+```
+r_B(mutated) = λ_mutated · N_mutated · g(Y_mutated, K_mutated) · (1 + α_F · N_caf)
+```
+
 Immune killing adds a tumor-immune interaction to death:
 
 ```
@@ -183,10 +197,10 @@ Immune birth includes activation by mutated cells:
 r_B(immune) = λ_immune · N_immune · g(Y_immune, K_immune) + β · N_immune · N_mutated
 ```
 
-Immune exhaustion scales with tumor burden:
+Immune exhaustion scales with tumor burden and with CAFs:
 
 ```
-r_E(immune) = ω_immune · N_immune · N_mutated
+r_E(immune) = ω_immune · N_immune · N_mutated + ω_F · N_immune · N_caf
 ```
 
 #### `ExhaustedClone`
@@ -195,6 +209,25 @@ Exhausted clones do not divide:
 
 ```
 r_B(exhausted) = 0
+```
+
+#### `FibroblastClone`
+
+Normal fibroblasts grow logistically in a niche shared with CAFs and tumor cells,
+and are activated into CAFs by tumor cells (Michaelis–Menten):
+
+```
+r_B(fibroblast) = λ_fibroblast · N_fibroblast · g(Y_fibroblast, K_fibroblast)
+r_E(fibroblast) = κ · N_fibroblast · N_mutated / (C_½ + N_mutated)
+```
+
+#### `CAFClone`
+
+CAFs do not divide and die at rate `μ_caf`:
+
+```
+r_B(caf) = 0
+r_D(caf) = μ_caf · N_caf
 ```
 
 ### Instability dynamics (Work in progress)
@@ -229,6 +262,8 @@ The run loop stops when the total rate is zero, there are no more events, or `T_
 Defines global simulation parameters and default clone-type parameters via `CellTypeConfig`.
 
 - scales `beta` and `theta_I` by `OMEGA`
+- scales the fibroblast interactions: `omega_F` and `alpha_F` divided by `OMEGA`,
+  `C_half` multiplied by `OMEGA` (it is a population), `kappa` unscaled
 - scales carrying capacity `K`
 - selects `AdaptedCrowding` or `SimpleCrowding`
 
@@ -242,6 +277,8 @@ Defines the `Clone` base class and specialized subclasses:
 - `MutatedClone` (`mutated`)
 - `ImmuneClone` (`immune`)
 - `ExhaustedClone` (`exhausted`)
+- `FibroblastClone` (`fibroblast`)
+- `CAFClone` (`caf`)
 
 Each clone defines:
 
@@ -307,7 +344,8 @@ make gillespie_plot
 - `TissueState` stores state and should remain separate from simulation logic.
 - `RateMatrix` is currently a simple event list; it does not implement tau-leap.
 - `MUTATION` events create a new clone of the configured `next_mutation` type.
-- `EXHAUSTION` events kill one source clone and increase the exhausted clone count.
+- `EXHAUSTION` events remove one cell from the source clone and add one to the root clone
+  of its `converts_to` type (`exhausted` for `immune`, `caf` for `fibroblast`).
 
 ## Testing
 

@@ -38,7 +38,7 @@ class TestMergeAndBuild:
         assert config.cell_parameters["immune"] == SimulationConfig(
             scale=False
         ).cell_parameters["immune"]
-        assert set(config.cell_parameters) == {"base", "immune", "mutated", "exhausted"}
+        assert set(config.cell_parameters) == {"base", "immune", "mutated", "exhausted", "fibroblast", "caf"}
 
     def test_cli_overrides_json(self):
         config = merge_and_build(

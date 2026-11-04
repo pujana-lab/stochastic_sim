@@ -1,7 +1,7 @@
 from typing import Optional
 
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.clone import Clone, WildTypeClone, MutatedClone, ImmuneClone, ExhaustedClone
+from src.gillespie.clone import Clone, MutatedClone
 from src.gillespie.cloneId import CloneId
 
 

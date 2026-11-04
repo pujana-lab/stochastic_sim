@@ -172,6 +172,120 @@ def _params_by_source(fn: ast.FunctionDef) -> dict[str, list[str]]:
     return out
 
 
+# Rate of the base ``Clone`` method that a ``super().<method>()`` call returns
+# (README "Base forms"), written with the type name as in docs/NOTATION.md.
+BASE_RATES = {
+    "birth_rate_effective": "λ<sub>{t}</sub> · N<sub>{t}</sub> · g",
+    "death_rate_effective": "μ<sub>{t}</sub> · N<sub>{t}</sub>",
+    "exhaustion_rate_effective": "ω<sub>{t}</sub> · N<sub>{t}</sub>",
+    "conversion_rate_effective": "ω<sub>{t}</sub> · N<sub>{t}</sub>",
+}
+
+
+class _RateExpr:
+    """Render the return expression of a rate method in README notation.
+
+    Local variables are inlined, ``self.N`` -> N_t, ``pop_map.get("x")`` -> N_x,
+    ``self.config.p`` -> its symbol and ``super().m()`` -> the base rate.
+    """
+
+    def __init__(self, fn: ast.FunctionDef, t: str) -> None:
+        self.t = t
+        self.method = fn.name
+        self.env = {
+            st.targets[0].id: st.value
+            for st in ast.walk(fn)
+            if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name)
+        }
+        returns = [st for st in ast.walk(fn) if isinstance(st, ast.Return) and st.value is not None]
+        # the last return in source order; earlier ones are guards (``return 0.0``)
+        self.ret = max(returns, key=lambda r: r.lineno).value if returns else None
+
+    def _resolve(self, n: ast.AST) -> ast.AST:
+        seen = set()
+        while isinstance(n, ast.Name) and n.id in self.env and n.id not in seen:
+            seen.add(n.id)
+            n = self.env[n.id]
+        return n
+
+    def _split(self, n: ast.AST, op: type) -> list[ast.AST]:
+        n = self._resolve(n)
+        if isinstance(n, ast.BinOp) and isinstance(n.op, op):
+            return self._split(n.left, op) + self._split(n.right, op)
+        return [n]
+
+    @staticmethod
+    def _is_super(n: ast.AST) -> bool:
+        return (
+            isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute)
+            and isinstance(n.func.value, ast.Call)
+            and isinstance(n.func.value.func, ast.Name)
+            and n.func.value.func.id == "super"
+        )
+
+    def _kind(self, n: ast.AST) -> int:
+        """Sort key inside a product: base rate, parameters, populations, rest."""
+        n = self._resolve(n)
+        if self._is_super(n):
+            return 0
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Attribute) and n.value.attr == "config":
+            return 1
+        if self._keys(n) and not isinstance(n, ast.BinOp):
+            return 2
+        return 3
+
+    def _keys(self, n: ast.AST) -> set[str]:
+        """Populations an expression depends on."""
+        n = self._resolve(n)
+        if self._is_super(n):
+            return {self.t}
+        if isinstance(n, ast.Attribute) and n.attr == "N" and isinstance(n.value, ast.Name):
+            return {self.t}
+        keys = set(_pop_keys(n))
+        for sub in ast.iter_child_nodes(n):
+            if sub is not n:
+                keys |= self._keys(sub)
+        return keys
+
+    def render(self, n: ast.AST) -> str:
+        n = self._resolve(n)
+        if self._is_super(n):
+            return BASE_RATES.get(n.func.attr, f"{n.func.attr}()").format(t=self.t)
+        if isinstance(n, ast.Attribute) and n.attr == "N" and isinstance(n.value, ast.Name):
+            return f"N<sub>{self.t}</sub>"
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Attribute) and n.value.attr == "config":
+            return PARAM_SYMBOLS.get(n.attr, n.attr)
+        keys = _pop_keys_in_order(n)
+        if len(keys) == 1 and isinstance(n, (ast.Call, ast.Subscript)):
+            return f"N<sub>{keys[0]}</sub>"
+        if isinstance(n, ast.Constant):
+            return f"{n.value:g}" if isinstance(n.value, float) else str(n.value)
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mult):
+            return self.product(self._split(n, ast.Mult))
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+            return " + ".join(self.render(a) for a in self._split(n, ast.Add))
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Sub):
+            return f"{self.render(n.left)} − {self._paren(n.right)}"
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):
+            return f"{self.render(n.left)} / {self._paren(n.right)}"
+        return ast.unparse(n)
+
+    def _paren(self, n: ast.AST) -> str:
+        n = self._resolve(n)
+        text = self.render(n)
+        return f"({text})" if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Sub)) else text
+
+    def product(self, factors: list[ast.AST]) -> str:
+        return " · ".join(self._paren(f) for f in sorted(factors, key=self._kind))
+
+    def formula(self) -> str | None:
+        """The whole rate, e.g. ``λ_immune · N_immune · g + β · N_immune · N_mutated``."""
+        if self.ret is None:
+            return None
+        return " + ".join(self.product(self._split(a, ast.Mult)) for a in self._split(self.ret, ast.Add))
+
+
 def _returns_zero(fn: ast.FunctionDef) -> bool:
     body = [s for s in fn.body if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant))]
     return (
@@ -203,6 +317,7 @@ def inspect_clone_types() -> dict[str, dict]:
                         "params": _config_params(fn),
                         "by_src": _params_by_source(fn),
                         "zero": _returns_zero(fn),
+                        "formula": _RateExpr(fn, type_name).formula(),
                     }
         info[type_name] = {"cls": cls, "methods": methods}
     return info
@@ -225,6 +340,30 @@ def _sym(t: str) -> str:
     return SYMBOLS.get(t, t)
 
 
+def _legend(colors: dict[str, str], crowding_edges: bool) -> str:
+    """Label of the legend node: edge kinds, rate symbols and crowding."""
+    def c(kind: str, glyph: str) -> str:
+        return f"<b><span style='color:{colors[kind]}'>{glyph}</span></b>"
+
+    rows = [
+        "<b>Legend</b>",
+        "<b>⟶</b> transition: mutation r<sub>M</sub>, conversion r<sub>E</sub>",
+        "<span style='color:#888'>●</span> transition point",
+        f"{c('birth', '⟹')} source enters the target's birth r<sub>B</sub>",
+        f"{c('death', '⟶✕')} source enters the target's death r<sub>D</sub>",
+        f"{c('cat', '⇢')} source enters the conversion r<sub>E</sub>",
+    ]
+    if crowding_edges:
+        rows.append(f"{c('crowding', '⇢○')} source competes for space")
+    rows += [
+        "arrow label: parameter of the interaction;",
+        "the term is in the target's formula (in its node)",
+        "r<sub>E</sub> of a type is written in the converting node",
+        "g = g(Y<sub>X</sub>, K<sub>X</sub>) = 1 − Y<sub>X</sub>/K<sub>X</sub>, Y<sub>X</sub>: competing population",
+    ]
+    return "<br/>".join(f"<small>{r}</small>" if i else r for i, r in enumerate(rows))
+
+
 def build_mermaid(crowding_edges: bool = False) -> str:
     info = inspect_clone_types()
     defaults = _DEFAULT_CELL_PARAMETERS
@@ -235,22 +374,37 @@ def build_mermaid(crowding_edges: bool = False) -> str:
     ]
     edges: list[str] = []
     styles: list[str] = []
-    link_styles: dict[str, list[int]] = {"crowding": [], "birth": [], "death": [], "cat": [], "flow": []}
+    link_styles: dict[str, list[int]] = {
+        "crowding": [], "birth": [], "death": [], "cat": [], "flow": [], "anchor": [],
+    }
+    has_incoming: set[str] = set()
+    catalysts: dict[str, list[str]] = {}
 
-    def add(edge: str, kind: str) -> None:
+    def add(edge: str, kind: str, target: str | None = None) -> None:
         link_styles[kind].append(len(edges))
         edges.append(edge)
+        if target is not None:
+            has_incoming.add(target)
 
     for t, meta in info.items():
         cfg = defaults.get(t, CellTypeConfig())
         m = meta["methods"]
         birth_off = m.get("birth_rate_effective", {}).get("zero", False) or cfg.lambda0 == 0
-        own = []
+        conv = m.get("exhaustion_rate_effective") or m.get("conversion_rate_effective")
+        target = _conversion_target(t, cfg) if conv or cfg.omega_exhaust > 0 else None
+
+        def rate(meth: str, symbol: str) -> str:
+            formula = m[meth]["formula"] if meth in m else None
+            return f"r<sub>{symbol}</sub> = {formula or BASE_RATES[meth].format(t=t)}"
+
+        lines_lbl = []
         if not birth_off:
-            own.append("r<sub>B</sub>")
+            lines_lbl.append(rate("birth_rate_effective", "B"))
         if cfg.mu > 0 or "death_rate_effective" in m:
-            own.append("r<sub>D</sub>")
-        lines_lbl = [" · ".join(own)] if own else []
+            lines_lbl.append(rate("death_rate_effective", "D"))
+        if target:
+            meth = "conversion_rate_effective" if "conversion_rate_effective" in m else "exhaustion_rate_effective"
+            lines_lbl.append(rate(meth, "E"))
         crowd = m.get("crowding_numerator")
         if crowd and not birth_off:
             num = " + ".join(f"N<sub>{k}</sub>" for k in crowd["reads_in_order"]) or "0"
@@ -264,27 +418,25 @@ def build_mermaid(crowding_edges: bool = False) -> str:
             node = f"mut_{t}"
             lines.append(f"    {node}(( ))")
             add(f"    {t} --- {node}", "flow")
-            add(f'    {node} -->|"r<sub>M</sub> (ν)"| {cfg.next_mutation}', "flow")
+            add(f'    {node} -->|"r<sub>M</sub> (ν)"| {cfg.next_mutation}', "flow", cfg.next_mutation)
             styles.append(f"    class {node} tr")
 
         # conversion (exhaustion / activation)
-        conv = m.get("exhaustion_rate_effective") or m.get("conversion_rate_effective")
-        if conv or cfg.omega_exhaust > 0:
-            target = _conversion_target(t, cfg)
-            if target:
-                node = f"conv_{t}"
-                lines.append(f"    {node}(( ))")
-                add(f"    {t} --- {node}", "flow")
-                add(f'    {node} -->|"r<sub>E</sub>"| {target}', "flow")
-                styles.append(f"    class {node} tr")
-                for src in sorted((conv or {}).get("reads", ())):
-                    params = _psym(conv["by_src"].get(src, []))
-                    # The base method multiplies by the type's own omega_exhaust (ω),
-                    # which is a cell parameter, not a self.config read.
-                    if not params and cfg.omega_exhaust > 0:
-                        params = PARAM_SYMBOLS["omega_exhaust"]
-                    label = f'|"{params}"|' if params else ""
-                    add(f"    {src} -.->{label} {node}", "cat")
+        if target:
+            node = f"conv_{t}"
+            lines.append(f"    {node}(( ))")
+            add(f"    {t} --- {node}", "flow")
+            add(f'    {node} -->|"r<sub>E</sub>"| {target}', "flow", target)
+            styles.append(f"    class {node} tr")
+            for src in sorted((conv or {}).get("reads", ())):
+                params = _psym(conv["by_src"].get(src, []))
+                # The base method multiplies by the type's own omega_exhaust (ω),
+                # which is a cell parameter, not a self.config read.
+                if not params and cfg.omega_exhaust > 0:
+                    params = f"ω<sub>{t}</sub>"  # as written in the node formula
+                label = f'|"{params}"|' if params else ""
+                add(f"    {src} -.->{label} {node}", "cat")
+                catalysts.setdefault(t, []).append(src)
 
         # interactions on rates
         for meth, role in RATE_METHODS.items():
@@ -296,18 +448,29 @@ def build_mermaid(crowding_edges: bool = False) -> str:
                 if role == "crowding":
                     if not crowding_edges:
                         continue  # already shown in the node label as "K: ..."
-                    add(f'    {src} -.-o|"crowding"| {t}', "crowding")
+                    add(f'    {src} -.-o|"crowding"| {t}', "crowding", t)
                 elif role == "birth":
-                    add(f'    {src} ==>|"+ r<sub>B</sub> ({params})"| {t}', "birth")
+                    add(f'    {src} ==>|"{params}"| {t}', "birth", t)
                 elif role == "death":
-                    add(f'    {src} --x|"+ r<sub>D</sub> ({params})"| {t}', "death")
+                    add(f'    {src} --x|"{params}"| {t}', "death", t)
+
+    # Layout only: a type nothing flows into (e.g. fibroblast) would sit in the
+    # top rank, on top of the other interaction edges. Anchor it one rank below
+    # the type that catalyses its conversion with an invisible link.
+    for t in info:
+        if t not in has_incoming and catalysts.get(t):
+            add(f"    {catalysts[t][0]} ~~~ {t}", "anchor")
+
+    colors = {"crowding": "#9aa0a6", "birth": "#2e7d32", "death": "#c62828", "cat": "#6a1b9a"}
+    lines.append(f'    legend("{_legend(colors, crowding_edges)}")')
 
     lines += edges
     lines += [
         "    classDef tr fill:#888,stroke:#888,color:#888,width:6px,height:6px",
+        "    classDef lg text-align:left,font-size:12px",
         *styles,
+        "    class legend lg",
     ]
-    colors = {"crowding": "#9aa0a6", "birth": "#2e7d32", "death": "#c62828", "cat": "#6a1b9a"}
     for kind, idx in link_styles.items():
         if idx and kind in colors:
             lines.append(f"    linkStyle {','.join(map(str, idx))} stroke:{colors[kind]}")

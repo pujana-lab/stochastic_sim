@@ -19,7 +19,10 @@ def test_nested_clone_id():
 def test_root_clone_names_come_from_default_id():
     cell_parameters = SimulationConfig().cell_parameters
     names = {t: clone_id_to_str(cfg.default_id) for t, cfg in cell_parameters.items()}
-    assert names == {"base": "root", "mutated": "mutated_root", "immune": "immune", "exhausted": "exhausted"}
+    assert names == {
+        "base": "root", "mutated": "mutated_root", "immune": "immune", "exhausted": "exhausted",
+        "fibroblast": "fibroblast", "caf": "caf",
+    }
 
 
 # ── save_history_parquet ─────────────────────────────────────────────────────
