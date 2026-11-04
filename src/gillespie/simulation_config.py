@@ -22,6 +22,7 @@ class CellTypeConfig:
     # Crowding pool {T: w_T}: types that compete for this type's niche and their weight,
     # Y_X = Σ_T w_T · N_T. Empty = no crowding (g = 1). Weights are not scaled.
     crowding_pool: dict[str, float] = field(default_factory=dict, hash=False)
+    scaled: bool = False    # set by SimulationConfig when it scales by OMEGA; guards against scaling twice
 
 # default_id is the id of the root clone of each type: one per type, outside the
 # mutation lineage (mutants get parent.clone_id + (k,)). Every other module reads
@@ -131,6 +132,7 @@ class SimulationConfig:
         self._normalize_cell_parameters()
         self._initialize_crowding_strategy()
         if self.scale:
+            self._check_not_scaled()
             self._scale_interaction_parameters()
             self._scale_cell_parameters()
 
@@ -153,7 +155,7 @@ class SimulationConfig:
                 else:
                     cfg = CellTypeConfig(**payload)
             else:
-                raise TypeError(...)
+                raise TypeError(f"cell_parameters[{cell_type!r}] must be a dict or CellTypeConfig, got {type(config).__name__}")
             normalized[cell_type] = cfg
 
         for cell_type, cfg in normalized.items():
@@ -167,6 +169,21 @@ class SimulationConfig:
             )
 
         object.__setattr__(self, "cell_parameters", normalized)
+
+    def _check_not_scaled(self) -> None:
+        """Refuse to scale values that are already scaled.
+
+        SimulationConfig overwrites its fields with the OMEGA-scaled values, so
+        rebuilding it from an existing config (dataclasses.replace, asdict, ...)
+        would scale beta, theta_I, K, lambda0, ... a second time without any error.
+        """
+        already = [t for t, cfg in self.cell_parameters.items() if cfg.scaled]
+        if already:
+            raise ValueError(
+                f"cell_parameters {already} are already scaled by OMEGA (was this config built "
+                "from another SimulationConfig, e.g. with dataclasses.replace?). Build it from "
+                "the unscaled values instead, e.g. SimulationConfig(**json_dict, theta_I=...)."
+            )
 
     @staticmethod
     def _clean_crowding_pool(cell_type: str, cfg: CellTypeConfig, cell_parameters: dict) -> dict[str, float]:
@@ -227,6 +244,7 @@ class SimulationConfig:
             K=scaled_K,
             lambda0=lambda0,
             omega_exhaust=scaled_omega_exhaust,
+            scaled=True,
         )
     
     def _scale_K(self, K: float | int) -> int:
