@@ -13,6 +13,7 @@ from src.gillespie.rate_matrix import RateMatrix
 from src.gillespie.crowding_strategy import CrowdingStrategy
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone_factory import CloneFactory
+from src.gillespie.stepper import Stepper, make_stepper
 
 class TumorSimulation:
     def __init__(self, config: SimulationConfig) -> None:
@@ -45,7 +46,8 @@ class TumorSimulation:
         # Use crowding strategy from config (initialized in SimulationConfig.__post_init__)
         self.crowding_strategy: CrowdingStrategy = self.config.crowding_strategy
 
-        #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
+        # How the simulation advances (exact SSA, later tau leaping), chosen by name in the config
+        self.stepper: Stepper = make_stepper(self.config.stepper)
         # Rates of the current state; rebuilt after every event and reused by the next step
         self._rate_matrix: Optional[RateMatrix] = self._build_rate_matrix()
         rates0 = self._rate_matrix

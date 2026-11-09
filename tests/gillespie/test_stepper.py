@@ -5,7 +5,7 @@ import io
 import pytest
 
 from src.gillespie.simulation_config import SimulationConfig
-from src.gillespie.stepper import SSAStepper, Stepper
+from src.gillespie.stepper import SSAStepper, Stepper, make_stepper
 from src.gillespie.tumor_simulation import TumorSimulation
 from tests.gillespie.test_tumor_simulation_rates import _FIBROBLAST_REGRESSION_CONFIG
 
@@ -72,3 +72,29 @@ def test_run_burst_stops_when_no_event_is_left():
     assert SSAStepper().run_burst(sim, 10) is False
     assert sim.step_count == 1
     assert sim.times == [0.0]
+
+
+# ── Stepper selection (Phase 1.3) ────────────────────────────────────────────
+
+def test_default_stepper_is_ssa():
+    assert SimulationConfig().stepper == "ssa"
+    assert isinstance(_sim(seed=1).stepper, SSAStepper)
+
+
+def test_unknown_stepper_is_rejected_by_the_config():
+    with pytest.raises(ValueError, match="Unknown stepper 'sas'"):
+        SimulationConfig(stepper="sas")
+
+
+def test_make_stepper():
+    assert isinstance(make_stepper("ssa"), SSAStepper)
+    with pytest.raises(ValueError, match="known: \\['ssa'\\]"):
+        make_stepper("tau")
+
+
+def test_stepper_is_saved_in_the_run_config(tmp_path):
+    import json
+    from src.gillespie.infrastructure.run_config_output import save_run_config
+    _, path = save_run_config(tmp_path / "config", SimulationConfig(seed=1))
+    saved = json.loads(path.read_text())
+    assert saved["input"]["stepper"] == saved["used"]["stepper"] == "ssa"

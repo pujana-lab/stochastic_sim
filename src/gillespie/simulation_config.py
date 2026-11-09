@@ -89,6 +89,7 @@ class SimulationConfig:
     # simulation control
     T_max: float = 1000
     seed: Optional[int] = None
+    stepper: str = "ssa"   # how the simulation advances, a name of stepper.STEPPERS ("ssa": exact Gillespie)
 
    
     decline: float = 0.0
@@ -133,6 +134,7 @@ class SimulationConfig:
     def __post_init__(self):
         """Initialize configuration: normalize cell params, scale parameters, and set up strategies."""
         self._fix_seed()
+        self._check_stepper()
         self._normalize_cell_parameters()
         object.__setattr__(self, "input_values", self.as_dict())
         self._initialize_crowding_strategy()
@@ -224,6 +226,12 @@ class SimulationConfig:
         """
         if self.seed is None:
             object.__setattr__(self, "seed", int(np.random.SeedSequence().generate_state(1)[0]))
+
+    def _check_stepper(self) -> None:
+        """Reject an unknown stepper name here, before any simulation is built."""
+        from src.gillespie.stepper import STEPPERS
+        if self.stepper not in STEPPERS:
+            raise ValueError(f"Unknown stepper {self.stepper!r}; known: {sorted(STEPPERS)}")
 
     def _scale_interaction_parameters(self) -> None:
         """Scale beta and theta_I by OMEGA for population-level dynamics."""

@@ -94,3 +94,17 @@ class SSAStepper(Stepper):
             if not self.step(sim):
                 return False
         return True
+
+
+# Steppers by the name used in SimulationConfig.stepper, the JSON and --stepper.
+STEPPERS: dict[str, type[Stepper]] = {
+    "ssa": SSAStepper,
+}
+
+
+def make_stepper(name: str) -> Stepper:
+    """The stepper called `name` (see STEPPERS)."""
+    try:
+        return STEPPERS[name]()
+    except KeyError:
+        raise ValueError(f"Unknown stepper {name!r}; known: {sorted(STEPPERS)}") from None

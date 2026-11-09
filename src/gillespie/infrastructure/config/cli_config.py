@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 from src.gillespie.simulation_config import SimulationConfig
+from src.gillespie.stepper import STEPPERS
 
 
 def _config_field_names() -> set[str]:
@@ -15,7 +17,8 @@ def _config_defaults() -> dict:
     cfg = SimulationConfig()
     return {
         "T_max": cfg.T_max,
-        "seed": None,  # SimulationConfig() draws a fresh seed; the CLI default must stay "not given"
+        "seed": None,
+        "stepper": cfg.stepper,  # SimulationConfig() draws a fresh seed; the CLI default must stay "not given"
         "decline": cfg.decline,
         "Kmin": cfg.Kmin,
         "theta_I": cfg.theta_I,
@@ -45,6 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, default=None, help="JSON config file (CLI args override it).")
     p.add_argument("--T-max", dest="T_max", type=float, default=defaults["T_max"])
     p.add_argument("--seed", type=int, default=defaults["seed"])
+    p.add_argument("--stepper", choices=sorted(STEPPERS), default=defaults["stepper"],
+                   help="How the simulation advances (default: %(default)s, the exact Gillespie SSA).")
     p.add_argument("--decline", type=float, default=defaults["decline"])
     p.add_argument("--Kmin", type=float, default=defaults["Kmin"])
     p.add_argument("--theta-I", dest="theta_I", type=float, default=defaults["theta_I"])
@@ -72,18 +77,33 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def get_explicit_cli_args(namespace: argparse.Namespace, parser: argparse.ArgumentParser) -> dict:
-    defaults = vars(parser.parse_args([]))
+    """Config fields of the flags written on the command line, which override the JSON.
+
+    A flag counts when it was written, even with its default value: `--stepper ssa`
+    over a JSON with another stepper must win. `parse_args` records which flags were
+    written; for a namespace from a plain `parser.parse_args`, a value that differs
+    from the default is the only evidence left.
+    """
     config_fields = _config_field_names()
-    result = {}
-    for k, v in vars(namespace).items():
-        if k in config_fields:
-            if k in defaults and v != defaults[k]:
-                result[k] = v
-            elif k not in defaults:
-                result[k] = v
-    return result
+    explicit = getattr(namespace, "_explicit", None)
+    if explicit is not None:
+        return {k: getattr(namespace, k) for k in explicit if k in config_fields}
+    defaults = vars(parser.parse_args([]))
+    return {k: v for k, v in vars(namespace).items()
+            if k in config_fields and (k not in defaults or v != defaults[k])}
+
+
+def _written_dests(args: list[str]) -> set[str]:
+    """Dests of the flags present in `args`: parse again with every default suppressed."""
+    probe = build_parser()
+    for action in probe._actions:
+        action.default = argparse.SUPPRESS
+    return set(vars(probe.parse_args(args)))
 
 
 def parse_args(args: list[str] | None = None) -> argparse.Namespace:
     parser = build_parser()
-    return parser.parse_args(args)
+    args = sys.argv[1:] if args is None else args
+    namespace = parser.parse_args(args)
+    namespace._explicit = _written_dests(args)
+    return namespace
