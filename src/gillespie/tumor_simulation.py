@@ -13,6 +13,7 @@ from src.gillespie.rate_matrix import RateMatrix
 from src.gillespie.crowding_strategy import CrowdingStrategy
 from src.gillespie.simulation_config import SimulationConfig
 from src.gillespie.clone_factory import CloneFactory
+from src.gillespie.stepper import Stepper, make_stepper
 
 class TumorSimulation:
     def __init__(self, config: SimulationConfig) -> None:
@@ -45,7 +46,8 @@ class TumorSimulation:
         # Use crowding strategy from config (initialized in SimulationConfig.__post_init__)
         self.crowding_strategy: CrowdingStrategy = self.config.crowding_strategy
 
-        #aqui habria que anyadir lo mismo para elegir strategy pero para el tipo de leap. (Binomial, Poisson, Poisson half etc)
+        # How the simulation advances (exact SSA, later tau leaping), chosen by name in the config
+        self.stepper: Stepper = make_stepper(self.config.stepper)
         # Rates of the current state; rebuilt after every event and reused by the next step
         self._rate_matrix: Optional[RateMatrix] = self._build_rate_matrix()
         rates0 = self._rate_matrix
@@ -128,10 +130,60 @@ class TumorSimulation:
         self.tissue_state.effective_rates = effective_rates
         return rate_matrix
 
-    def _sample_waiting_time(self, total_rate: float) -> float:
-        if total_rate <= 0:
-            raise ValueError("Total rate must be positive.")
-        return -np.log(self.rng.random()) / total_rate
+    # ── Helpers shared by every stepper (see stepper.py) ──────────────────────
+    # Tags: [DYNAMICS] changes the state or the next step; [REPORTING] only records
+    # for the analysis (the trajectory is the same without it); [ONLY IF …] condition.
+
+    def _record_rates(self, rate_matrix: RateMatrix) -> None:
+        """Rate history: the rates at the start of a step (only when saving history).
+
+        Pure [REPORTING]: read by save_rates_history_parquet, by nothing in the dynamics.
+        """
+        if self.save_interval > 0:   # [ONLY IF save_interval > 0]
+            self.rate_history.append([
+                {
+                    "time": self.t,
+                    "kind": e.kind.name,
+                    "clone_id": e.clone_id,
+                    "clone_type": e.clone_type,
+                    "rate": e.rate,
+                } for e in rate_matrix.events
+            ])
+
+    def _record(self, event: Optional[Event] = None, final: bool = False) -> None:
+        """Record a step once the stepper has set self.t and changed the clones.
+
+        Appends the time, rebuilds the rates of the new state (used by the snapshot
+        and by the next step), then saves the snapshot (every save_interval steps,
+        always when `final`) and the event (when save_all_steps). Shared by every
+        stepper, so the history has the same layout whatever the step method.
+
+        The first block keeps the state consistent and must run; the rest only
+        records. They share one function because the snapshot needs the rates of
+        the new state, so the rebuild has to come first.
+        """
+        # [REPORTING] time axis returned by run() (grows every step, even when nothing else is saved)
+        self.times.append(self.t)
+
+        # [DYNAMICS] keep the state consistent for the next step. Order matters:
+        # t first, because with `decay` the crowding K_t = actual_K − decline·t uses it.
+        self.tissue_state.t = self.t
+        # [DYNAMICS] pop_map and rates of the new state; the next step reuses this matrix.
+        # (It also fills tissue_state.effective_rates, which only the snapshot reads.)
+        self._rate_matrix = self._build_rate_matrix()
+
+        # [REPORTING] [ONLY IF final] last state at T_max: always saved, no event to save
+        if final:
+            self.history.append(self.tissue_state.snapshot())
+            print("FINAL RATES AND STATE")
+            self.tissue_state.print_pop_map()
+            return
+        # [REPORTING] [ONLY IF save_interval > 0 and this step is a multiple of it] snapshot
+        if self.save_interval > 0 and self.step_count % self.save_interval == 0:
+            self.history.append(self.tissue_state.snapshot())
+        # [REPORTING] [ONLY IF save_all_steps] event list (debug parquet, --save-debug)
+        if self.save_all_steps:
+            self.events.append(event)
 
     # TO-DO: Add tests for mutation and exhaustion events, and for the overall step logic.
     def _introduce_mutation(self, clone: Clone, k: int = 1) -> None:
@@ -208,70 +260,16 @@ class TumorSimulation:
         return self.tissue_state.total_population()
 
     def step(self, return_matrix: Optional[bool] = False) -> bool:
-        """Advance by one Gillespie step. Returns False when simulation should stop."""
-        self.step_count += 1
-        rate_matrix = self._current_rate_matrix()
-  
+        """Advance by one step of self.stepper. Returns False when the simulation should stop.
+
+        The step itself (dynamics and recording) is in the stepper, see stepper.py.
+        """
+        # [REPORTING] [ONLY IF return_matrix] debug print of the rates before the step
         if return_matrix == True:
             print(self.t)
-            self.print_event_table(events = rate_matrix.events)
-        total_rate = rate_matrix.get_total_rate()
-        
-        # Only record rates if saving history
-        if self.save_interval > 0:
-            step_rates = [
-                {
-                    "time": self.t,
-                    "kind": e.kind.name,
-                    "clone_id": e.clone_id,
-                    "clone_type": e.clone_type,
-                    "rate": e.rate,
-                } for e in rate_matrix.events
-            ]
-            self.rate_history.append(step_rates)
-        
-        if total_rate <= 0 or not rate_matrix.events:
-            return False
+            self.print_event_table(events=self._current_rate_matrix().events)
+        return self.stepper.step(self)
 
-        tau = self._sample_waiting_time(total_rate)
-        new_t = self.t + tau
-
-        if new_t > self.config.T_max:
-            tau = self.config.T_max - self.t
-            self._advance_all_instability(tau)
-            self.t = self.config.T_max
-            self.times.append(self.t)
-            self.tissue_state.t = self.t
-            self._rate_matrix = self._build_rate_matrix()
-            # Always save final state
-            self.history.append(self.tissue_state.snapshot())
-            print("FINAL RATES AND STATE")
-            self.tissue_state.print_pop_map()
-            # self.print_event_table(events=rate_matrix.events)
-            
-            return False
-
-        self._advance_all_instability(tau)
-        self.t = new_t
-        
-        event = rate_matrix.choose_event(self.rng.random())
-        self._apply_event(event)
-        
-        self.times.append(self.t)
-        self.tissue_state.t = self.t
-        # Rates of the post-event state: used by the snapshot below and by the next step
-        self._rate_matrix = self._build_rate_matrix()
-        
-        # Save snapshots conditionally
-        if self.save_interval > 0 and self.step_count % self.save_interval == 0:
-            self.history.append(self.tissue_state.snapshot())
-        
-        # Save events if recording all steps
-        if self.save_all_steps:
-            self.events.append(event)
-                
-        return True
-        
     def _stopping_cond(self) -> bool:
         """" We will make the system stop if it reaches stability"""
 

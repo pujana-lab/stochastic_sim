@@ -1,6 +1,6 @@
 import contextlib
 import io
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import pytest
 
@@ -98,3 +98,48 @@ def test_seeded_trajectory_is_unchanged():
     assert final == {"base": 2480, "mutated": 190, "immune": 1901, "exhausted": 93}
     mutant_clones = len(tissue_state.clones) - len(config.cell_parameters)  # minus one root per type
     assert mutant_clones == 26
+
+
+# Parameters of configs/fibroblasts.json on 09-11-2026, copied so that tuning the
+# example config does not break the regression below.
+_FIBROBLAST_REGRESSION_CONFIG = dict(
+    cell_parameters={
+        "base": {"N": 0, "K": 1.0, "lambda0": 1.0, "mu": 0.25, "nu": 0.0, "next_mutation": "mutated"},
+        "immune": {"N": 100, "K": 1.0, "lambda0": 0.1, "omega_exhaust": 0.1, "mu": 0.0},
+        "mutated": {"N": 800, "K": 1.0, "lambda0": 1.0, "mu": 0.1, "fitness_gain": 0.0},
+        "exhausted": {"N": 0, "mu": 0.4, "lambda0": 0.0},
+        "fibroblast": {"N": 2000, "K": 2.0, "lambda0": 0.1, "mu": 0.0},
+        "caf": {"N": 0, "mu": 0.05, "lambda0": 0.0},
+    },
+    OMEGA=1000, theta_I=0.8, beta=0.45,
+    kappa=0.2, C_half=0.5, omega_F=0.05, alpha_F=0.25,
+    use_logistic_adapted=False, verbose=False,
+)
+
+
+def test_seeded_fibroblast_trajectory_is_unchanged():
+    """Regression with the fibroblast module on, recorded on 09-11-2026 before tau-leaping Phase 1.
+
+    Covers what the test above does not: fibroblast -> caf activation (κ, C_½),
+    exhaustion by caf (ω_F), caf support of tumour birth (α_F), caf death and the
+    six-type event order. If a change is meant to alter the dynamics, record the
+    new values here in the same commit.
+    """
+    config = SimulationConfig(seed=11, T_max=3, **_FIBROBLAST_REGRESSION_CONFIG)
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        sim = TumorSimulation(config)
+        times, _, tissue_state, _ = sim.run()
+    assert len(times) == 2014
+    assert times[-1] == 3
+    # The waiting times depend on the exact total rate of every step, so the last
+    # event time also catches rate changes too small to flip any event choice.
+    assert times[-2] == pytest.approx(2.9997935745704, rel=1e-12)
+    assert dict(tissue_state.pop_map) == {
+        "base": 0, "mutated": 752, "immune": 248, "exhausted": 43, "fibroblast": 1397, "caf": 563,
+    }
+    assert Counter((e.kind.name, e.clone_type) for e in sim.events) == {
+        ("BIRTH", "mutated"): 515, ("DEATH", "mutated"): 563,
+        ("BIRTH", "immune"): 210, ("CONVERSION", "immune"): 62,
+        ("DEATH", "exhausted"): 19,
+        ("CONVERSION", "fibroblast"): 603, ("DEATH", "caf"): 40,
+    }

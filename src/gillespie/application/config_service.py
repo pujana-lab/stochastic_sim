@@ -18,7 +18,7 @@ def merge_and_build(json_data: dict | None = None, cli_overrides: dict | None = 
 
 def build_config_from_cli(cli_args: list[str] | None = None) -> tuple[SimulationConfig, argparse.Namespace]:
     parser = build_parser()
-    namespace = parse_args(cli_args) if cli_args is not None else parser.parse_args()
+    namespace = parse_args(cli_args)  # records which flags were written
     base: dict = {}
     if namespace.config is not None:
         base = load_config_json(namespace.config)
