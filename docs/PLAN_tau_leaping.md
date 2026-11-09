@@ -1,8 +1,9 @@
 # Plan: multinomial tau-leaping for the Gillespie simulator
 
-> Status: **proposal, not implemented**. Snapshot of 28-10-2026.
-
-> (`fibroblast` F_N, `caf` F_T), now implemented in `src/gillespie/` (commit `34475c1`).
+> Status: **Phase 0 done** (merged in PR #3, 04-11-2026), **Phase 1 in progress**
+> (branch `tau-phase1`). Phases 2–4 not started. First written on 28-10-2026,
+> before the fibroblast module (`fibroblast` F_N, `caf` F_T, commit `34475c1`),
+> and revised for it.
 
 ## 0. Summary
 
@@ -289,11 +290,11 @@ Five small, separately testable changes. The first two are refactors that pay of
     3. *Generic conversion.* **Done** (commit `34475c1`): `CellTypeConfig.converts_to` (`immune` → `exhausted`, `fibroblast` → `caf`) replaces the hard-coded target in `_induce_conversion` (then `_induce_exhaustion`), which raises `ValueError` without a target. Renamed on 04-11-2026: `EventType.EXHAUSTION` → `CONVERSION` (value `"conversion"`, so debug parquets now write `event_kind = "conversion"`) and `exhaustion_rate_effective` → `conversion_rate_effective`; the `"re"` key in snapshots and parquet is unchanged.
     4. *Interaction inputs as data.* **Done** (04-11-2026, `tests/gillespie/test_hazard_inputs.py`). Add a class attribute `hazard_inputs: tuple[str, ...]`: the types read from `pop_map` in a rate method outside the crowding pool. Today: `mutated` = (immune, caf), `immune` = (mutated, caf), `fibroblast` = (mutated), the rest (). It feeds the observable set of §5, step 1. It stays on the class, not in the config, because it describes what the rate code reads. The default is `()`. A test finds the dependencies numerically (crowding off, every interaction parameter non-zero, change one type total at a time and see which rates move) and requires them to equal `hazard_inputs`, so a new interaction cannot be forgotten.
     5. *Bulk mutators.* **Done** (04-11-2026, `tests/gillespie/test_bulk_mutators.py`). `Clone.divide(k=1)`, `Clone.kill(k=1)` and `_apply_event(event, k=1)`, threaded through `_introduce_mutation` and `_induce_conversion`. The defaults keep the SSA path unchanged. `kill` still clamps at 0, but `_apply_event` raises `ValueError` when a consuming event asks for k > N, so a bulk conversion or mutation never creates cells from nothing; k = 0 is a no-op and k < 0 is rejected. A bulk mutation creates k clones of `MUTANT_SEED_SIZE` with the same child ids as k single events; the test checks the bulk event against k single events and against k · `type_delta`.
-2. **Phase 1: a `Stepper` interface, with no behaviour change.**
-    1. New `src/gillespie/stepper.py` with `Stepper(ABC).step(sim) -> bool`. `SSAStepper` gets the current body of `TumorSimulation.step()` verbatim, plus `run_burst(sim, n)` for the fallback.
-    2. `SimulationConfig.stepper: str = "ssa"` and `_initialize_stepper()`, mirroring `_initialize_crowding_strategy()`. This is the slot the TODO in `TumorSimulation.__init__` asks for.
-    3. `TumorSimulation.step()` becomes `return self.stepper.step(self)`. The shared helpers stay on `TumorSimulation`: `_current_rate_matrix`, `_build_rate_matrix`, `_apply_event`, `_advance_all_instability`, and a new `_record(...)`.
-    4. Gate: a seeded run with `stepper="ssa"` gives the identical trajectory before and after. `test_seeded_trajectory_is_unchanged` (in `tests/gillespie/test_tumor_simulation_rates.py`) already checks this with the fibroblasts off; add a second seeded run with the module on (fibroblast, caf, κ, ω_F, α_F all > 0).
+2. **Phase 1: a `Stepper` interface, with no behaviour change.** Revised on 09-11-2026: the regression is recorded first, and the config holds the stepper name, not the instance (item 3). Gate for every item: a seeded run gives the identical trajectory before and after, checked by `test_seeded_trajectory_is_unchanged` (fibroblasts off) and the test of item 1, both in `tests/gillespie/test_tumor_simulation_rates.py`.
+    1. *Seeded regression with the fibroblast module on*, recorded on the code before the refactor. `test_seeded_fibroblast_trajectory_is_unchanged` runs the parameters of `configs/fibroblasts.json` (copied into the test, so tuning the example config does not break it; κ, ω_F, α_F > 0). It checks the number of steps, the final population of the six types, the event count per kind and type, and the time of the last event. The last one catches rate changes too small to flip any event choice.
+    2. *Stepper interface.* New `src/gillespie/stepper.py` with `Stepper(ABC).step(sim) -> bool`. `SSAStepper` gets the current body of `TumorSimulation.step()` verbatim, plus `run_burst(sim, n)` for the fallback.
+    3. *Stepper selection.* `SimulationConfig.stepper: str = "ssa"`, validated against the known names; `TumorSimulation.__init__` builds the instance with `make_stepper(config.stepper)` from `stepper.py`. This is the slot the TODO in `TumorSimulation.__init__` asks for. Unlike `CrowdingStrategy`, the config keeps only the name: the stepper acts on the simulation (rng, clones, recording), not on parameters, and the config is frozen data saved to `run_config.json`, which then records the method used. It is set in the JSON only, with no CLI flag.
+    4. *`step()` delegates.* `TumorSimulation.step()` becomes `return self.stepper.step(self)`, keeping `step_count` and the `return_matrix` debug print. The shared helpers stay on `TumorSimulation`: `_current_rate_matrix`, `_build_rate_matrix`, `_apply_event`, `_advance_all_instability`, and a new `_record(...)` (time, snapshot, events and rate history), which the end-time cut also uses. Update the event lifecycle in `docs/ARCHITECTURE.md`.
 3. **Phase 2: a vector view of the rate matrix.**
     1. `RateMatrix.to_arrays(tissue_state) -> LeapArrays`. It holds the rates a_j, the clone index, the consumes flag, the type-delta matrix (J × types) and n per clone. It also holds the observable matrix L (crowding pools + interaction inputs), built from `Clone._registry`, `CellTypeConfig.crowding_pool` and `hazard_inputs`. With six types, L has 7 rows today: 4 pools (base, mutated, immune, fibroblast) and 3 inputs (immune, mutated, caf). Y_mutated and the N_mutated input share the same ℓ but have different bounds; keep both, and the tighter one wins.
     2. Delete the `get_reaction_number_poisson` stub; its job moves to Phase 3.
@@ -309,7 +310,7 @@ Five small, separately testable changes. The first two are refactors that pay of
         - `self.events` stores a `LeapRecord(t, tau, counts per kind and clone)`. `save_debug_history_parquet`, which zips events with snapshots, must accept it.
         - `rate_history` keeps the rates at the start of each leap.
         - `save_interval` now counts leaps. A time grid `save_dt` is the cleaner follow-up (§10).
-    4. JSON and CLI: add the new fields to the config loader and to `cli.py`, with the existing precedence (defaults → JSON → CLI). They are dimensionless, so no Ω scaling.
+    4. Configuration: the new fields are set in the JSON only, with no CLI flags (decided 09-11-2026, as for `stepper` and the fibroblast parameters). They are dimensionless, so no Ω scaling.
 5. **Phase 4: validation and benchmarks** (§9). Then update `docs/ARCHITECTURE.md`: the event lifecycle now has two steppers.
 
 New configuration fields:
