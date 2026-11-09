@@ -43,6 +43,8 @@ SimulationConfig
 TumorSimulation
   owns time, RNG, history, and the run loop
               |
+              +--> Stepper -------- one step: SSAStepper (exact, one event)
+              |
               +--> CloneFactory --> Clone subclasses
               |                    (rates and clone-local state)
               |
@@ -64,7 +66,8 @@ infrastructure
 | Area | Responsibility | Start here |
 |---|---|---|
 | Domain model | Clone hierarchy, IDs, events, tissue state, rates | `src/gillespie/clone.py`, `event.py`, `tissue_state.py` |
-| Simulation orchestration | Initialise state, build rates, sample and apply events | `src/gillespie/tumor_simulation.py` |
+| Simulation orchestration | Initialise state, build rates, apply events, record history | `src/gillespie/tumor_simulation.py` |
+| Step method | How much happens in one step (exact SSA; tau leaping planned) | `src/gillespie/stepper.py` |
 | Configuration | Defaults, scaling, JSON mapping, CLI precedence | `simulation_config.py`, `infrastructure/config/` |
 | Infrastructure | CLI, Parquet writers, summary output | `src/gillespie/infrastructure/` |
 | Experiments | Batch runs and analysis scripts | `scripts/`, `notebooks/` |
@@ -113,18 +116,34 @@ lists back into tuples.
 
 ## Event lifecycle
 
-For every simulation step:
+`TumorSimulation.step()` delegates to a `Stepper` (`src/gillespie/stepper.py`),
+chosen by name with `SimulationConfig.stepper` (JSON or `--stepper`) and built
+by `make_stepper()`. The stepper decides how long one step is (τ) and how much
+happens in it; `TumorSimulation` keeps the state and the helpers every stepper shares
+(`_current_rate_matrix`, `_build_rate_matrix`, `_apply_event`,
+`_advance_all_instability`, `_record_rates`, `_record`). The only stepper today
+is `SSAStepper` (`"ssa"`, the default), the exact Gillespie SSA; the tau-leaping
+stepper of `docs/PLAN_tau_leaping.md` will be a second one. For every SSA step:
 
-1. The step reuses the `RateMatrix` of the current state (built at start-up or
-   at the end of the previous step; `create_clone()` invalidates it).
-2. A waiting time is sampled from the total propensity.
-3. `RateMatrix.choose_event()` selects one event proportionally to its rate.
+1. The step counter advances and the step reuses the `RateMatrix` of the
+   current state (built at start-up or at the end of the previous step;
+   `create_clone()` invalidates it). `_record_rates` saves its rates when
+   history is on.
+2. `SSAStepper` samples a waiting time from the total propensity. If it would pass
+   `T_max`, time and instability advance to `T_max`, the final state is
+   recorded, and the run stops.
+3. Instability advances by the waiting time and `RateMatrix.choose_event()`
+   selects one event proportionally to its rate.
 4. The event mutates the selected clone or creates a child clone.
-5. Time and instability are updated, then `TumorSimulation._build_rate_matrix()`
+5. `_record` appends the time, then `TumorSimulation._build_rate_matrix()`
    refreshes `pop_map`, asks each living clone for effective rates, creates the
    non-zero `Event` candidates and stores the effective rates in
    `TissueState.effective_rates`.
-6. Optional history is recorded.
+6. `_record` saves the snapshot (every `save_interval` steps) and the event
+   (with `save_all_steps`).
+
+`SSAStepper.run_burst(sim, n)` runs up to n such steps; it is the fallback the
+tau-leaping stepper will use when a leap would buy too few events.
 
 The per-clone event construction is an important current behaviour. Each
 clone's rate is proportional to its own `N` (interactions read the type totals

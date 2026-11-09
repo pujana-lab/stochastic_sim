@@ -38,7 +38,12 @@ def test_stepper_is_abstract():
     dict(seed=11, T_max=3, **_FIBROBLAST_REGRESSION_CONFIG),                        # fibroblasts on
 ], ids=["mutations", "fibroblasts"])
 def test_ssa_stepper_matches_simulation_step(config):
-    """SSAStepper().step(sim) advances exactly as TumorSimulation.step() does."""
+    """Calling the stepper directly (as run_burst does) advances exactly as sim.step().
+
+    Written in Phase 1.2, when the two were separate copies of the SSA. Since
+    Phase 1.4 sim.step() delegates to the stepper, and the seeded regressions in
+    test_tumor_simulation_rates.py are what pin the trajectory.
+    """
     by_sim, by_stepper = _sim(**config), _sim(**config)
     stepper = SSAStepper()
     with contextlib.redirect_stdout(io.StringIO()):
