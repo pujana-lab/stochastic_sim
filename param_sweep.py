@@ -27,23 +27,29 @@ PARAM_COMBINATIONS = [
 
 
 def build_config_for_combination(
-    base_params: dict, gamma: float, omega: float, seed: int = 42,N_immune: int = 100, N_mutated: int = 100
+    base_params: dict, gamma: float, omega: float, seed: int = 42,
+    N_immune: int | None = None, N_mutated: int | None = None,
 ) -> SimulationConfig:
-    """Crea una instancia de SimulationConfig actualizando gamma y omega_exhaust."""
+    """Crea una instancia de SimulationConfig actualizando gamma y omega_exhaust.
+
+    N_immune / N_mutated solo cambian la poblacion inicial si se dan; si son None
+    se usa la del JSON (o el default de SimulationConfig si el JSON no la tiene).
+    Los tipos que falten en el JSON se completan con los defaults en SimulationConfig.
+    """
     params = copy.deepcopy(base_params)
     params["seed"] = seed
+    cells = params.setdefault("cell_parameters", {})
 
     # Asignar gamma a la tasa de muerte tumoral (mu) en base y mutated
-    if "base" in params["cell_parameters"]:
-        params["cell_parameters"]["base"]["mu"] = gamma
-    if "mutated" in params["cell_parameters"]:
-        params["cell_parameters"]["mutated"]["mu"] = gamma
-        params["cell_parameters"]["mutated"]["N"] = N_mutated  # Valor por defecto si no se especifica
+    cells.setdefault("base", {})["mu"] = gamma
+    cells.setdefault("mutated", {})["mu"] = gamma
+    if N_mutated is not None:
+        cells["mutated"]["N"] = N_mutated
 
     # Asignar omega a la tasa de exhaustacion en celulas inmunes
-    if "immune" in params["cell_parameters"]:
-        params["cell_parameters"]["immune"]["omega_exhaust"] = omega
-        params["cell_parameters"]["immune"]["N"] = N_immune  # Valor por defecto si no se especifica
+    cells.setdefault("immune", {})["omega_exhaust"] = omega
+    if N_immune is not None:
+        cells["immune"]["N"] = N_immune
     return SimulationConfig(**params)
 
 
@@ -90,8 +96,8 @@ def main() -> None:
     for idx, combo in enumerate(PARAM_COMBINATIONS, 1):
         gamma = combo["gamma"]
         omega = combo["omega"]
-        N_immune = combo["N_immune"]
-        N_mutated = combo["N_mutated"]
+        N_immune = combo.get("N_immune")   # None -> la del JSON
+        N_mutated = combo.get("N_mutated")
         name = combo["name"]
 
         print(f"\n[{idx}/5] Ejecutando: {name} | Gamma (muerte)={gamma} | Omega (exhaustion)={omega}")

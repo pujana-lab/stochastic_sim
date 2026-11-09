@@ -58,7 +58,7 @@ SVG_PATH = ROOT / "docs" / "model_diagram.svg"
 MARKDOWN_TARGETS = [ROOT / "docs" / "ARCHITECTURE.md", ROOT / "docs" / "PLAN_fibroblastos.md"]
 BLOCK_RE = re.compile(r"(<!-- model-diagram:start -->\n)(.*?)(<!-- model-diagram:end -->)", re.S)
 
-# Mean-field symbols of the report / scaling_calculator (C, I, E) and the
+# Mean-field symbols of the report (C, I, E) and the
 # fibroblast plan (F_N, F_T). Types without one (base) show only their name.
 SYMBOLS = {
     "mutated": "C",

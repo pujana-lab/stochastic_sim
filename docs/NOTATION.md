@@ -2,9 +2,7 @@
 
 The model is written in two layers, and each keeps its own symbols:
 
-- **Mean-field (ODE)**: the report (`main.pdf`, eq. 4),
-  [`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py),
-  [`omega_convergence.py`](../notebooks/omega_convergence.py) and the
+- **Mean-field (ODE)**: the report (`main.pdf`, eq. 4) and the
   equations of [`PLAN_fibroblastos.md`](./PLAN_fibroblastos.md) §2.
 - **Gillespie**: [`README.md`](../README.md), the poster and the docstrings
   in `src/gillespie/`.
@@ -53,11 +51,11 @@ sketches and notebooks are mapped in the last section; do not copy them.
 | crowding weight: share of type T in the crowding numerator of X | `w_T` (in the factor of X) | `w_T` (already dimensionless) | `cell_parameters[X].crowding_pool[T]` | unscaled (default 1) |
 
 - `←` means the dimensionless group reuses the name of the dimensional
-  parameter, as in `DimensionlessParameters`.
+  parameter.
 - The killing rate is `θ` in the mean-field layer and `θ_I` in the Gillespie
   (code `theta_I`). It is the same parameter.
 - "÷ `OMEGA`" and "× `OMEGA`" are applied once by `SimulationConfig` when
-  `scale=True`; config files and the calculator write unscaled values.
+  `scale=True`; config files write unscaled values.
 - The effective Gillespie birth rate is `lambda0 · (1 + fitness_gain)`.
 - Gillespie only: mutation rate `ν` (`nu`), `instability`, `K_min` (`Kmin`),
   and the `base` rates.

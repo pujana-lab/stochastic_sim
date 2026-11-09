@@ -15,7 +15,7 @@ def _config_defaults() -> dict:
     cfg = SimulationConfig()
     return {
         "T_max": cfg.T_max,
-        "seed": cfg.seed,
+        "seed": None,  # SimulationConfig() draws a fresh seed; the CLI default must stay "not given"
         "decline": cfg.decline,
         "Kmin": cfg.Kmin,
         "theta_I": cfg.theta_I,

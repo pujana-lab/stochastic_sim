@@ -48,8 +48,9 @@ def test_format_config_has_input_and_used_columns():
 
 
 def test_saved_table_has_input_and_used(tmp_path):
-    txt, _ = save_run_config(tmp_path / "run_config", SimulationConfig(OMEGA=4000))
-    assert txt.read_text() == format_config(SimulationConfig(OMEGA=4000)) + "\n"
+    cfg = SimulationConfig(OMEGA=4000, seed=1)
+    txt, _ = save_run_config(tmp_path / "run_config", cfg)
+    assert txt.read_text() == format_config(cfg) + "\n"
 
 
 def test_saved_input_reproduces_the_config(tmp_path):
@@ -67,3 +68,37 @@ def test_json_default_id_lists_become_tuples(tmp_path):
     path = tmp_path / "cfg.json"
     path.write_text(json.dumps({"cell_parameters": {"mutated": {"default_id": [-3]}}}))
     assert load_config_json(path)["cell_parameters"]["mutated"]["default_id"] == (-3,)
+
+
+def _trajectory(seed, steps=200):
+    from src.gillespie.tumor_simulation import TumorSimulation
+    sim = TumorSimulation(SimulationConfig(seed=seed, verbose=False, T_max=1e9))
+    for _ in range(steps):
+        sim.step()
+    return sim.t, dict(sim.tissue_state.pop_map)
+
+
+def test_missing_seed_is_drawn_and_saved(tmp_path):
+    """seed=None draws an int seed; the saved config reproduces the run."""
+    cfg = SimulationConfig(seed=None, verbose=False)
+    assert isinstance(cfg.seed, int)
+    assert cfg.input_values["seed"] == cfg.seed
+    assert SimulationConfig(seed=None).seed != cfg.seed            # fresh seed each time
+    _, json_path = save_run_config(tmp_path / "config", cfg)
+    saved = json.loads(json_path.read_text())["input"]["seed"]
+    assert saved == cfg.seed
+    assert _trajectory(saved) == _trajectory(saved)
+
+
+def test_explicit_seed_is_kept():
+    assert SimulationConfig(seed=7).seed == 7
+    assert SimulationConfig(seed=0).seed == 0
+
+
+def test_cli_seed_default_does_not_override_json(tmp_path):
+    """A CLI run without --seed keeps the JSON seed (the parser default is 'not given')."""
+    from src.gillespie.application.config_service import build_config_from_cli
+    path = tmp_path / "c.json"
+    path.write_text(json.dumps({"seed": 123, "verbose": False}))
+    cfg, _ = build_config_from_cli(["--config", str(path)])
+    assert cfg.seed == 123

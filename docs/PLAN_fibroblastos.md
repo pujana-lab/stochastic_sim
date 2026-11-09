@@ -2,14 +2,13 @@
 
 > Estado: **fases 0–3 implementadas** (con los tests unitarios de la fase 5),
 > a partir del prototipo `docs/fibroblastos_prototype.patch`. Pendiente: fase 4
-> (CLI, `scaling_calculator`, config de ejemplo, notebooks y gráficas) y la
-> validación de la fase 5. Con los fibroblastos apagados, una simulación con
+> (CLI, config de ejemplo y gráficas) y la validación de la fase 5. Con los fibroblastos apagados, una simulación con
 > semilla da exactamente la misma trayectoria que antes
 > (`test_seeded_trajectory_is_unchanged`).
 
 La notación sigue [`NOTATION.md`](NOTATION.md). Hay dos capas:
 
-- **Campo medio**: la que usan el informe (`main.pdf`, ec. 4), `scaling_calculator.py` y `notebooks/omega_convergence.py`. Poblaciones C, I, E.
+- **Campo medio**: la que usa el informe (`main.pdf`, ec. 4). Poblaciones C, I, E.
 - **Gillespie**: la que usan `README.md` y el póster. Tasas `r_B, r_D, r_M, r_E`, cuentas `N_<tipo>`. El crowding es `g(Y, K_X) = 1 − Y/K_X` (en campo medio se escribe el factor logístico explícito).
 
 Los fibroblastos se añaden como dos poblaciones nuevas, F_N y F_T, en las dos capas.
@@ -125,7 +124,7 @@ c = \frac{C}{K_C},\quad i = \frac{I}{K_I},\quad e = \frac{E}{K_I},\quad
 f_N = \frac{F_N}{K_F},\quad f_T = \frac{F_T}{K_F},\quad \tau = \lambda_C t
 ```
 
-Los nombres siguen `DimensionlessParameters`, que reutiliza $\beta$, $\omega$ y $\mu_E$ para los grupos adimensionales.
+Los grupos adimensionales reutilizan los nombres $\beta$, $\omega$ y $\mu_E$ (ver `NOTATION.md`).
 
 ```math
 \begin{aligned}
@@ -359,13 +358,8 @@ El término se escribe en dos pasos (`n_caf = pop_map.get(...)` y luego `… * s
 ### Fase 4: infraestructura y documentación
 
 - `cli_config.py`: añadir `--kappa`, `--C-half`, `--omega-F` y `--alpha-F`, y sus entradas en `_config_defaults`. Por JSON ya funcionan.
-- `scaling_calculator.py`:
-  - `PhysicalParameters`: añadir `lambda_F, mu_F, K_F, kappa, C_half, omega_F, alpha_F, F_N0, F_T0`.
-  - `DimensionlessParameters`: añadir `rho_F, k, c_half, kappa, mu_F, omega_F, alpha_F`.
-  - Implementar las conversiones de §2.2 en ambos sentidos.
 - `configs/fibroblasts.json`: ejemplo con `N_fibroblast = K_F · OMEGA`.
 - `README.md` (secciones *Overview* y *Clone-specific interaction terms*) y `docs/ARCHITECTURE.md`: pasar de cuatro tipos a seis y añadir las fórmulas de §2.3.
-- `notebooks/omega_convergence.py`: ampliar `ode_rhs` y las propensiones con F_N y F_T para la validación.
 - Gráficas (`notebooks/visualization/*`): colores para `fibroblast` y `caf`.
 
 ### Fase 5: tests y validación
@@ -385,7 +379,7 @@ Tests de regresión:
 - con el módulo apagado, la misma semilla da la misma trayectoria;
 - `test_config_service` pasa a esperar seis tipos.
 
-Validación del modelo, siguiendo el esquema de `omega_convergence.py`:
+Validación del modelo: se corre `TumorSimulation` (el simulador real, no un SSA aparte) con `configs/fibroblasts.json` a varios `OMEGA`, y se compara la media de `N_T / (K_T · OMEGA)` sobre varias semillas con la ODE de §2.2, integrada en el mismo script:
 
 1. Solo fibroblastos (C = 0): la media de `N_fibroblast` converge a `K_F · OMEGA`.
 2. Con C fijo: `N_caf` converge al valor de §2.4.
@@ -407,5 +401,5 @@ Respuestas del 03-11-2026.
 
 2. **Forma del término F_T → C.** El cuaderno tiene la flecha pero no la ecuación. Implementado de momento: factor lineal $(1 + \alpha_F F_T)$ sobre la natalidad. Alternativas: saturante, $(1 + \alpha_F F_T/(F_{1/2} + F_T))$, o que el efecto vaya sobre $\mu_C$ o $K_C$ en lugar de la natalidad.
 3. **¿Mueren los F_N?** El cuaderno no tiene término de muerte. Implementado de momento: no mueren. Si se añade $\mu_{\text{fibroblast}} > 0$, `AdaptedCrowding` inflará $K_F$ y sería un octavo parámetro.
-6. **Valores físicos** de $\lambda_F$, $K_F$, $\mu_F$, $\kappa$, $C_{1/2}$, $\omega_F$ y $\alpha_F$, para el `scaling_calculator`. Pendiente de confirmar.
+6. **Valores físicos** de $\lambda_F$, $K_F$, $\mu_F$, $\kappa$, $C_{1/2}$, $\omega_F$ y $\alpha_F$. Pendiente de confirmar.
 7. **Forma de la activación F_N → F_T.** Implementado: Michaelis–Menten, $\kappa F_N C/(C_{1/2} + C)$. Alternativa: acción de masas, $\kappa F_N C$ (un parámetro menos, $\kappa$ ÷ `OMEGA` como el resto de interacciones). Solo hay diferencia apreciable si $c_{1/2} = C_{1/2}/K_C \lesssim 1$; si el tumor es pequeño frente a $C_{1/2}$, solo importa $\kappa/C_{1/2}$ y los dos parámetros no se pueden separar.

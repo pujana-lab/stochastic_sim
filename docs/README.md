@@ -18,7 +18,7 @@ flow and boundaries.
   derivation, step-size control, and the implementation plan on the current
   architecture. Not implemented.
 - [`PLAN_fibroblastos.md`](./PLAN_fibroblastos.md) — fibroblast module
-  (F_N, F_T). Phases 0–3 implemented; CLI, calculator, plots and validation
+  (F_N, F_T). Phases 0–3 implemented; CLI, example config, plots and validation
   pending.
 
 ## Research and historical material

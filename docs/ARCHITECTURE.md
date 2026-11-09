@@ -100,15 +100,13 @@ building a new `SimulationConfig` from unscaled values. Every entry point
 saves both with `infrastructure.run_config_output.save_run_config`: a table
 (`config_report.format_config`) in `.txt` and `{"input", "used"}` in `.json`,
 whose `input` section is a valid JSON configuration that reproduces the run.
-The CLI writes `./run_config.{txt,json}`; `scripts/run_batch_simulations.py`
+For that, `SimulationConfig` replaces `seed=None` by a freshly drawn integer
+seed before anything is recorded, so the saved `seed` is never `null`; an
+explicit seed is kept as given. The CLI writes `./run_config.{txt,json}`; `scripts/run_batch_simulations.py`
 and `param_sweep.py` write `config.{txt,json}` in each run directory. The JSON loader turns `default_id`
 lists back into tuples.
 
-The dimensional-to-Gillespie calculator is implemented in
-[`scaling_calculator.py`](../src/gillespie/application/scaling_calculator.py).
-It emits a valid JSON configuration and records the physical and
-dimensionless values in an ignored `_calculator` metadata section. `OMEGA`
-is the population/system-size scale: interaction coefficients are divided by
+`OMEGA` is the population/system-size scale: interaction coefficients are divided by
 `OMEGA` once, while dimensionless capacities are converted to
 `OMEGA * K`. `AdaptedCrowding` then inflates `actual_K` by
 `1 / (1 - mu / lambda)` to make the requested baseline homeostatic.
