@@ -1,6 +1,6 @@
 import json
 
-from src.gillespie.application.scaling_calculator import (
+from drafts.scaling_calculator import (
     PhysicalParameters,
     dimensional_to_dimensionless,
     dimensionless_to_dimensional,
