@@ -132,6 +132,7 @@ class SimulationConfig:
 
     def __post_init__(self):
         """Initialize configuration: normalize cell params, scale parameters, and set up strategies."""
+        self._fix_seed()
         self._normalize_cell_parameters()
         object.__setattr__(self, "input_values", self.as_dict())
         self._initialize_crowding_strategy()
@@ -215,6 +216,15 @@ class SimulationConfig:
     # Private initialization methods (called from __post_init__)
     # ─────────────────────────────────────────────────────────────────────────
     
+    def _fix_seed(self) -> None:
+        """Draw a seed when none is given, so the saved run config can reproduce the run.
+
+        np.random.default_rng(None) would take fresh OS entropy and the run could not be
+        repeated. An explicit seed is left unchanged.
+        """
+        if self.seed is None:
+            object.__setattr__(self, "seed", int(np.random.SeedSequence().generate_state(1)[0]))
+
     def _scale_interaction_parameters(self) -> None:
         """Scale beta and theta_I by OMEGA for population-level dynamics."""
         object.__setattr__(self, 'beta', self.beta / self.OMEGA)
