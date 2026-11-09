@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from src.gillespie.infrastructure.config.cli_config import build_parser, get_explicit_cli_args, parse_args
@@ -31,7 +32,8 @@ def main() -> None:
     print(f"Saved run conditions (input and used values) to {run_config_txt} and {run_config_json}")
 
     sim = TumorSimulation(config=config)
-    input("press any key to continue")
+    if sys.stdin.isatty():  # pause only in an interactive terminal (not nohup, cluster or scripts)
+        input("press any key to continue")
     print("Starting...")
     #TODO: mover los writers a dentro del simulador
     times, history, tissue_state,rates_history = sim.run()
